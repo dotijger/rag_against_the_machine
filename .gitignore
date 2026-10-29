@@ -1,1 +1,5 @@
 .mypy_cache
+datasets_public/
+__pycache__
+READMEproject.md
+moulinette.zip
