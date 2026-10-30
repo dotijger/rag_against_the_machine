@@ -4,6 +4,9 @@
 from pydantic import BaseModel, model_validator, ValidationError
 from typing import Self
 
+
+from src.utils import read_source
+
 class Chunk(BaseModel):
     file_path: str
     start: int
@@ -16,5 +19,4 @@ class Chunk(BaseModel):
         if len(text) > (end - start):
             raise ValidationError("Chunk size exceeds start and end range.")
 
-    
 
