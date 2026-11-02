@@ -8,6 +8,8 @@ dependencies = [
     "fire>=0.7.1",
     "flake8>=7.4.1",
     "mypy>=2.4.0",
+    "pathlib>=1.0.1",
+    "pydantic>=2.14.2",
 ]
 
 [tool.mypy]
