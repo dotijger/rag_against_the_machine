@@ -4,6 +4,7 @@
 from pydantic import BaseModel, model_validator, ValidationError
 from typing import Self
 from pathlib import Path
+import re
 
 from src.utils import read_source
 
@@ -32,7 +33,7 @@ class Chunker():
         self.chunks: list[Chunk] = []
     
     def _read_source(self) -> None:
-        with open(self.path, encoding="utf-8", newline="") as f:
+        with open(self.path, encoding="utf-8") as f:
             self.body = f.read()
 
     # added start and stop that default to the full unchunked file body but
@@ -67,6 +68,22 @@ class Chunker():
             # if ast.parse raises SyntaxError, default to _window_chunker() for entire file
             pass
 
+    def _md(self) -> None:
+        # need to make a separate class probably 
+        heading = re.compile(r"*#{1, 6}\s")
+        fence = re.compile(r"*(```|~~~)")
+        lines = self.body.split('\n')
+        cuts = [0]
+        offset = 0
+        in_fence = False
+        for line in lines:
+            if fench.match(line):
+                in_fence = not in_fence
+            elif not in_fence and heading.match(line) and offset > 0:
+                cuts.append(offset)
+            offset += len(line)
+        cuts.append(len(source))
+        # return cuts
 
 
 if __name__ == "__main__":
