@@ -121,7 +121,7 @@ class Chunker():
 
     def _chunkify(self, cuts: list[int]) -> None:
         previous = 0
-        print(f"{cuts=}")
+        # print(f"{cuts=}")
         for cut in cuts:
             for start, end in self._windows(previous, cut):
                 try:
