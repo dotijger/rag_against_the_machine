@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+import uuid
+from pydantic import BaseModel, Field
 
 # represents a single source of information
 class MinimalSource(BaseModel):
@@ -13,18 +14,18 @@ class UnansweredQuestion(BaseModel):
 
 # represents an answered question
 class AnsweredQuestion(UnansweredQuestion):
-    sources: List[MinimalSource]
+    sources: list[MinimalSource]
     answer: str
 
 # represents a dataset of rag questions
 class RagDataset(BaseModel):
-    rag_questions: List[AnsweredQuestion | UnansweredQuestion]
+    rag_questions: list[AnsweredQuestion | UnansweredQuestion]
 
 # represents the search results
 class MinimalSearchResults(BaseModel):
     question_id: str
     question: str
-    retrieved_sources: List[MinimalSource]
+    retrieved_sources: list[MinimalSource]
 
 # represents the answer of the search results
 class MinimalAnswer(MinimalSearchResults):
@@ -32,9 +33,9 @@ class MinimalAnswer(MinimalSearchResults):
 
 # represents the search results and answers
 class StudentSearchResults(BaseModel):
-    search_results: List[MinimalSearchResults]
+    search_results: list[MinimalSearchResults]
     k: int
 
 class StudentSearchResultsAndAnswer(BaseModel):
-    search_results: List[MinimalAnswer]
+    search_results: list[MinimalAnswer]
     k: int

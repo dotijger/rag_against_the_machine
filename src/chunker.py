@@ -58,7 +58,9 @@ class Chunker():
     
     def run(self) -> None:
         if self.path.suffix not in self.SUPPORTED:
-            raise ChunkError("File type not supported by chunking methods, aborting.")
+            print("File type not supported, skipping file")
+            return
+            # raise ChunkError("File type not supported by chunking methods, skipping file.")
         self._read_source()
         if len(self.body) == 0:
             return
@@ -67,7 +69,7 @@ class Chunker():
         elif self.path.suffix == '.md':
             self._md()
         elif self.path.suffix == '.py':
-            print(f"running {self.path=}")
+            # print(f"running {self.path=}")
             self._py()
 
     def _py(self) -> None:
