@@ -120,7 +120,7 @@ class RAG():
             answers.append(self.search(uq.question, k, (True, uq)))
         results = StudentSearchResults(search_results=answers, k=k)
         base = Path(dataset_path).name
-        with open(save_directory / base, 'w', encoding='utf-8') as f:
+        with open(Path(save_directory) / base, 'w', encoding='utf-8') as f:
             f.write(results.model_dump_json(indent=2) + '\n')
         return results
 

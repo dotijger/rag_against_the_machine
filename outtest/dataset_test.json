@@ -1,0 +1,173 @@
+{
+  "search_results": [
+    {
+      "question_id": "189c8b8a-e59c-4fca-92ad-c02df42cbe40",
+      "question": "What activation formats does the fused batched MoE layer return in vLLM?",
+      "retrieved_sources": [
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/quantization/compressed_tensors/compressed_tensors_moe.py",
+          "first_character_index": 16387,
+          "last_character_index": 16854
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/quantization/fp8.py",
+          "first_character_index": 46257,
+          "last_character_index": 46711
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/quantization/compressed_tensors/compressed_tensors_moe.py",
+          "first_character_index": 37615,
+          "last_character_index": 38069
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/fused_moe/config.py",
+          "first_character_index": 5987,
+          "last_character_index": 6427
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/quantization/utils/marlin_utils.py",
+          "first_character_index": 6911,
+          "last_character_index": 7383
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/tests/kernels/moe/modular_kernel_tools/cli_args.py",
+          "first_character_index": 2390,
+          "last_character_index": 2848
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/docs/design/fused_moe_modular_kernel.md",
+          "first_character_index": 0,
+          "last_character_index": 430
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/lora/models.py",
+          "first_character_index": 1788,
+          "last_character_index": 2262
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/docs/design/fused_moe_modular_kernel.md",
+          "first_character_index": 17806,
+          "last_character_index": 18260
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/docs/design/fused_moe_modular_kernel.md",
+          "first_character_index": 10666,
+          "last_character_index": 11159
+        }
+      ]
+    },
+    {
+      "question_id": "02789461-05fd-435d-9673-91606102d6c9",
+      "question": "What are the default values for FP8_MIN and FP8_MAX constants in vLLM's triton_flash_attention module?",
+      "retrieved_sources": [
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/quantization/utils/fp8_utils.py",
+          "first_character_index": 15090,
+          "last_character_index": 15563
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/tests/kernels/moe/test_triton_moe_ptpc_fp8.py",
+          "first_character_index": 4535,
+          "last_character_index": 4983
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/fused_moe/batched_deep_gemm_moe.py",
+          "first_character_index": 5441,
+          "last_character_index": 5927
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/tests/kernels/quantization/test_block_fp8.py",
+          "first_character_index": 2392,
+          "last_character_index": 2863
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/benchmarks/kernels/benchmark_w8a8_block_fp8.py",
+          "first_character_index": 5503,
+          "last_character_index": 5946
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/tests/kernels/quant_utils.py",
+          "first_character_index": 6655,
+          "last_character_index": 7140
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/tests/kernels/moe/test_deepgemm.py",
+          "first_character_index": 1130,
+          "last_character_index": 1608
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/quantization/utils/fp8_utils.py",
+          "first_character_index": 10071,
+          "last_character_index": 10221
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/models/grok1.py",
+          "first_character_index": 2302,
+          "last_character_index": 2767
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/tests/kernels/test_triton_flash_attention.py",
+          "first_character_index": 0,
+          "last_character_index": 462
+        }
+      ]
+    },
+    {
+      "question_id": "e852801e-b909-4360-82ea-cedb2a1be919",
+      "question": "What determines whether vLLM's sampler returns Pythonized results or deferred Pythonization arguments?",
+      "retrieved_sources": [
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/sampler.py",
+          "first_character_index": 27486,
+          "last_character_index": 27942
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/sampler.py",
+          "first_character_index": 21626,
+          "last_character_index": 22089
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/sampler.py",
+          "first_character_index": 3343,
+          "last_character_index": 3843
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/sampler.py",
+          "first_character_index": 27942,
+          "last_character_index": 28442
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/sampler.py",
+          "first_character_index": 22089,
+          "last_character_index": 22547
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/sampler.py",
+          "first_character_index": 8936,
+          "last_character_index": 9411
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/sampler.py",
+          "first_character_index": 11775,
+          "last_character_index": 12227
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/sampler.py",
+          "first_character_index": 2216,
+          "last_character_index": 2284
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/engine/llm_engine.py",
+          "first_character_index": 45272,
+          "last_character_index": 45769
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/v1/structured_output/backend_types.py",
+          "first_character_index": 665,
+          "last_character_index": 1129
+        }
+      ]
+    }
+  ],
+  "k": 10
+}
