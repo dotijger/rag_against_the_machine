@@ -1,5 +1,6 @@
 import uuid
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+from typing import TypedDict
 
 # represents a single source of information
 class MinimalSource(BaseModel):
@@ -9,6 +10,7 @@ class MinimalSource(BaseModel):
 
 # represents an unanswered question
 class UnansweredQuestion(BaseModel):
+    model_config = ConfigDict(strict=True)
     question_id: str = Field(default_factory=lambda:str(uuid.uuid4()))
     question: str
 
@@ -39,3 +41,7 @@ class StudentSearchResults(BaseModel):
 class StudentSearchResultsAndAnswer(BaseModel):
     search_results: list[MinimalAnswer]
     k: int
+
+class TrueSource(TypedDict):
+    question_id: str
+    sources: list[MinimalSource]

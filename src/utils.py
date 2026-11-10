@@ -1,4 +1,3 @@
-
 def read_source(path: str) -> str:
     """
     Reads the file path and returns a string of its contents in utf-8 encoding

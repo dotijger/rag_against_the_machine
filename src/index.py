@@ -7,10 +7,6 @@ import json
 
 from src.chunker import Chunker, Chunk
 
-
-class IndexError(BaseException):
-    pass
-
 class Indexer():
     
     def __init__(self, corpus: list[Chunk], loaded: bool, output_path: Path) -> None:

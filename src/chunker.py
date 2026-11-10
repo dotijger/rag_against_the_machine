@@ -7,9 +7,7 @@ from pathlib import Path
 import re
 
 from src.utils import read_source
-
-class ChunkError(BaseException):
-    pass
+from src.error import ChunkError
 
 class Chunk(BaseModel):
     file_path: Path

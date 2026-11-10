@@ -15,9 +15,9 @@ from src.models import (
         StudentSearchResultsAndAnswer,
         RagDataset,
         )
+from src.error import RAGError
+from src.json import import_rag_questions
 
-class RAGError(BaseException):
-    pass
 
 class RAG():
 
@@ -26,17 +26,17 @@ class RAG():
         self.chunked_corpus: list[Chunk] = []
         self.source_corpus: list[MinimalSource] = []
         self.output_path: None | Path = None
-        self.rag_dataset: RagDataset(rag_questions=[])
         self.supported: list[str] = ['.md', '.py', '.txt']
    
     def _check_for_index(self) -> bool:
-        if Path('data/processed').is_dir():
-            with open('data/processed/chunks.jsonl', encoding='utf-8') as f:
-                chunks = [Chunk.model_validate_json(line) for line in f]
-            self.indexer = Indexer(corpus=chunks, loaded=True, output_path=Path('data/processed/'))
-            self.chunked_corpus = chunks
-            self.source_corpus = [self._to_minimal_source(c) for c in chunks]
-            return True
+        if self.output_path:
+            if self.output_path.is_dir():
+                with open(self.output_path / 'chunks.jsonl', encoding='utf-8') as f:
+                    chunks = [Chunk.model_validate_json(line) for line in f]
+                self.indexer = Indexer(corpus=chunks, loaded=True, output_path=self.output_path)
+                self.chunked_corpus = chunks
+                self.source_corpus = [self._to_minimal_source(c) for c in chunks]
+                return True
         return False
 
     def _to_minimal_source(self, c: Chunk) -> MinimalSource:
@@ -100,27 +100,21 @@ class RAG():
     def search_dataset(self, dataset_path: str, k: int, save_directory: str) -> StudentSearchResults:
         if not self._check_for_index():
             raise RAGError("Index must be built before other RAG function calls, aborting.")
-        with open(dataset_path, 'r', encoding='utf-8') as f:
-            dataset = json.load(f) # can raise JSON error 
-        answers = []
-        questions = dataset.get('rag_questions')
-        if not questions:
-            raise RAGError("Dataset does not contain any questions, aborting.")
-        for question in questions:
-            print(question)
-            question_id = question.get('question_id')
-            query = question.get('question')
-            try:
-                uq = UnansweredQuestion(
-                        question_id=question_id,
-                        question=query)
-            except ValidationError as e:
-                raise RAGError(f"Dataset question has an invalid format: {e}."
-                               f"Attempted: {query=}, {question_id=}")
-            answers.append(self.search(uq.question, k, (True, uq)))
+        if not is_readable_path(dataset_path):
+            raise RAGError("Dataset path given is not a readable file, aborting.")
+        answers = import_rag_questions(dataset_path)
         results = StudentSearchResults(search_results=answers, k=k)
         base = Path(dataset_path).name
-        with open(Path(save_directory) / base, 'w', encoding='utf-8') as f:
+        output_path = Path(save_directory)
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            raise RAGError("No permission to create the save directory.")
+        except NotADirectoryError:
+            raise RAGError("The save directory specified is not a directory.")
+        except OSError as e:
+            raise RAGError(f"OS Error occurred while trying to create save directory: {e}")
+        with open(save_directory / base, 'w', encoding='utf-8') as f:
             f.write(results.model_dump_json(indent=2) + '\n')
         return results
 
@@ -133,6 +127,7 @@ class RAG():
         if self.indexer is None:
             raise RAGError("Index must be built before other RAG function calls, aborting.")
         # print(f"{student_search_results_path=}, {save_directory=}")
+        # need to do JSON failsafe here
 
     def evaluate(self, student_search_results_path: str, dataset_path: str) -> None:
         if self.indexer is None:
