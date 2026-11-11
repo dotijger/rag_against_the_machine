@@ -42,6 +42,9 @@ class StudentSearchResultsAndAnswer(BaseModel):
     search_results: list[MinimalAnswer]
     k: int
 
-class TrueSource(TypedDict):
-    question_id: str
-    sources: list[MinimalSource]
+class Evaluation(BaseModel):
+    eval_id: str = Field(default_factory=lambda:str(uuid.uuid4())) 
+    metrics: list[tuple[int, float]]
+    k: k
+    count: int
+

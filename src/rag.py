@@ -14,9 +14,11 @@ from src.models import (
         StudentSearchResults,
         StudentSearchResultsAndAnswer,
         RagDataset,
+        Evaluation
         )
 from src.error import RAGError
-from src.json import import_rag_questions
+from src.utils import import_rag_questions
+from src.evaluate import run_evaluation
 
 
 class RAG():
@@ -129,7 +131,5 @@ class RAG():
         # print(f"{student_search_results_path=}, {save_directory=}")
         # need to do JSON failsafe here
 
-    def evaluate(self, student_search_results_path: str, dataset_path: str) -> None:
-        if self.indexer is None:
-            raise RAGError("Index must be built before other RAG function calls, aborting.")
-        # print(f"{student_search_results_path=}, {dataset_path=}")
+    def evaluate(student_search_results_path: str, dataset_path: str) -> Evaluation:
+        return run_evaluation(student_search_results_path, dataset_path)

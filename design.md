@@ -7,6 +7,7 @@ uv run python3 -m src index -max_chunk_size <int>
 
 for INDEXING:
 - chunker
+    can still use LangChain RecursiveTextSplitter (and specify language python / md etc)
 - indexer
 
 
