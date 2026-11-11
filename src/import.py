@@ -1,11 +1,10 @@
-from pydantic import ValidationError
+from pydantic import ValidationError, BaseModel
 from pathlib import Path
 import json
 
-from src.error import ImportError
-from src.models import UnansweredQuestion
+from src.error import ImportError, RAGError
 
-def is_readable_path(path: str) -> bool:
+def _is_readable_path(path: str) -> bool:
     if not isinstance(path, (str, Path)):
         return False
 
@@ -35,6 +34,57 @@ def json_load(path: str) -> Any:
     if not isinstance(data, dict[str, Any]):
         raise ImportError(f"{path}: expected a JSON object, got {type(data).__name__}")
     return data
+
+def load_model[M: BaseModel](path: str, model_cls: type[M]) -> M:
+    try:
+        _ = json_load(path)
+    except ImportError as e:
+        raise ImportError(e)
+    try:
+        return model_cls.model_validate_json(Path(path).read_text(encoding='utf-8'))
+    except OSError as e:
+        raise RAGError(f"Cannot read {path}: {e}") from e
+    except ValidationError as e:
+        raise RAGError(f"{path} does not match {model_cls.__name__}:\n{e}") from e
+
+## the below functions are not in use anymore but still here for historical purposes 
+def dict_to_minimal_source(source_data: dict[str, Any]) -> MinimalSource:
+    return MinimalSource(
+            file_path=source_data['file_path'],
+            first_character_index=source_data['first_character_index'],
+            last_character_index=source_data['last_character_index']
+            )
+
+def get_unanswered_questions(data: list[dict[str, Any]]) -> list[UnansweredQuestion]:
+    return [UnansweredQuestion(question_id=q['question_id'],question=q['question']) for q in data]
+
+def get_answered_questions(data: list[dict[str, Any]]) -> list[UnansweredQuestion]:
+    return [
+            AnsweredQuestion(
+                question_id=q['question_id'],
+                question=q['question'],
+                sources=[dict_to_minimal_source(source) for source in q['sources']],
+                answer=q['answer']
+                ) 
+            for q in data
+            ]
+
+def import_rag_dataset(path: str) -> RagDataset:
+    dataset = json_load(path)
+    try:
+        rag_dataset = RagDataset.model_validate_json(Path(path).read_text(encoding='utf-8'))
+    except ValidationError as e:
+        raise ImportError(f"{path} does not have a valid RAG dataset structure.")
+    questions = dataset.get('rag_questions')
+    if len(questions) == 0:
+        raise ImportError(f'{path} does not contain any questions.')
+    if questions[0].get('answer'):
+        return RagDataset(
+                rag_questions=get_answered_questions(questions)
+                )
+    return RagDataset(
+            rag_question=get_unanswered_questions(questions)
+            )
 
 def import_rag_questions(path: str) -> List[UnansweredQuestion]:
     dataset = json_load(path)

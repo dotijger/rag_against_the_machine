@@ -23,6 +23,10 @@ class AnsweredQuestion(UnansweredQuestion):
 class RagDataset(BaseModel):
     rag_questions: list[AnsweredQuestion | UnansweredQuestion]
 
+# represents a dataset of rag questions
+class AnsweredRagDataset(BaseModel):
+    rag_questions: list[AnsweredQuestion]
+
 # represents the search results
 class MinimalSearchResults(BaseModel):
     question_id: str

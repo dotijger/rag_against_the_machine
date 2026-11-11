@@ -10,24 +10,24 @@ from src.utils import read_source
 from src.error import ChunkError
 
 class Chunk(BaseModel):
-    file_path: Path
-    start: int
-    end: int
+    source: MinimalSource
     text: str
 
     @model_validator(mode='after')
     def verify(self) -> Self:
-        if self.start >= self.end:
+        start = self.source.first_character_index
+        end = self.source.last_character_index
+        if start >= end:
             raise ValueError("Chunk start index exceeds end index.")
-        if len(self.text) != (self.end - self.start):
+        if len(self.text) != (end - start):
             raise ValueError("Chunk size exceeds start and end range.")
         return self
 
 class Chunker():
     SUPPORTED = ['.txt', '.md', '.py']
 
-    def __init__(self, path: Path, max_chunk_size: int = 1500) -> None:
-        self.path = path
+    def __init__(self, path: str, max_chunk_size: int = 1500) -> None:
+        self.path = Path(path)
         self.max_chunk_size = max_chunk_size
         self.chunks: list[Chunk] = []
         self.body: str = ""
@@ -45,12 +45,13 @@ class Chunker():
             stop = len(self.body)
         for idx in range(start, stop, step):
             try:
-                self.chunks.append(
-                        Chunk(file_path=self.path,
-                              start=idx,
-                              end=min(idx + step, stop),
-                              text=self.body[idx:idx+step])
-                        )
+                minimal_source = minimalsource(
+                            file_path=str(self.path),
+                            first_character_index=idx,
+                            last_character_index=min(idx + step, stop))
+                self.chunks.append(Chunk(
+                              source=minimal_source,
+                              text=self.body[idx:idx+step]))
             except ValidationError as e:
                 raise ValueError(e)
     
@@ -125,12 +126,13 @@ class Chunker():
         for cut in cuts:
             for start, end in self._windows(previous, cut):
                 try:
-                    self.chunks.append(
-                            Chunk(file_path=self.path,
-                                  start=start,
-                                  end=end,
-                                  text=self.body[start:end])
-                            )
+                    minimal_source = minimalsource(
+                                file_path=str(self.path),
+                                first_character_index=start,
+                                last_character_index=end)
+                    self.chunks.append(Chunk(
+                                  source=minimal_source,
+                                  text=self.body[start:end]))
                 except ValidationError as e:
                     raise ValueError(e)
             previous = cut

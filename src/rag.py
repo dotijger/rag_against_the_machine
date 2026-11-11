@@ -17,36 +17,36 @@ from src.models import (
         Evaluation
         )
 from src.error import RAGError
-from src.utils import import_rag_questions
+from src.import import load_model
 from src.evaluate import run_evaluation
-
 
 class RAG():
 
     def __init__(self) -> None:
         self.indexer: None | Indexer = None
         self.chunked_corpus: list[Chunk] = []
-        self.source_corpus: list[MinimalSource] = []
         self.output_path: None | Path = None
         self.supported: list[str] = ['.md', '.py', '.txt']
    
-    def _check_for_index(self) -> bool:
-        if self.output_path:
-            if self.output_path.is_dir():
-                with open(self.output_path / 'chunks.jsonl', encoding='utf-8') as f:
-                    chunks = [Chunk.model_validate_json(line) for line in f]
-                self.indexer = Indexer(corpus=chunks, loaded=True, output_path=self.output_path)
-                self.chunked_corpus = chunks
-                self.source_corpus = [self._to_minimal_source(c) for c in chunks]
-                return True
-        return False
-
-    def _to_minimal_source(self, c: Chunk) -> MinimalSource:
-        return MinimalSource(
-                    file_path=str(c.file_path),
-                    first_character_index=c.start,
-                    last_character_index=c.end,
-                )
+    def _ensure_index(self) -> Indexer:
+        if self.indexer:
+            return self.indexer
+        if not self.output_path:
+            raise RAGError("Index needs to run before calling any other RAG methods.\n"
+                           "First run: `uv run python3 -m src index --max_chunk_size <int>`")
+        chunks_file = self.output_path / 'chunks.jsonl'
+        if not chunks_file.is_file():
+            raise RAGError("Index needs to run before calling any other RAG methods.\n"
+                           "First run: `uv run python3 -m src index --max_chunk_size <int>`")
+        try:
+            with open(chunks_file, encoding='utf-8') as f:
+                chunks = [Chunk.model_validate_json(line) for line in f if line.strip()]
+        except ValidationError as e:
+            raise RAGError("Corrupted chunks.jsonl file, rebuild index first by running:\n"
+                           "`uv run python3 -m src index --max_chunk_size <int?`")
+        self.indexer = Indexer(corpus=chunks, loaded=True, output_path=self.output_path)
+        self.chunked_corpus = chunks
+        return self.indexer
     
     def _chunk(self, max_chunk_size: int, path: Path) -> None:
         for p in sorted(path.rglob('*')):
@@ -57,8 +57,6 @@ class RAG():
         chunker = Chunker(path=path, max_chunk_size=max_chunk_size)
         chunker.run()
         self.chunked_corpus.extend(chunker.chunks)
-        minimal_sources = [self._to_minimal_source(c) for c in chunker.chunks]
-        self.source_corpus.extend(minimal_sources)
     
     def index(self, max_chunk_size: int, raw_dir: str = 'data/raw/', out_dir: str = 'data/processed/') -> None:
         self.output_path = Path(out_dir)
@@ -74,60 +72,45 @@ class RAG():
         else:
             raise RAGError("No corpus found to start indexing.")
 
-    def _base_search(self, query: str, k: int) -> MinimalSearchResults:
-        if not self._check_for_index():
-            raise RAGError("Index must be built before other RAG function calls, aborting.")
-        idx_results = self.indexer.get_ktop_idx(query, k)
-        retrieved_sources = [self.source_corpus[i] for i in idx_results]
+    def _base_search(self, query: str, k: int) -> list[MinimalSource]:
+        idx_results = self._ensure_index().get_ktop_idx(query, k)
+        retrieved_sources = [self.chunked_corpus[i].source for i in idx_results]
         return retrieved_sources
 
-    def search(self, query: str, k: int, q_id: tuple[bool, UnansweredQuestion | None] = (False, None)) -> MinimalSearchResults:
-        if not self._check_for_index():
-            raise RAGError("Index must be built before other RAG function calls, aborting.")
-        if not q_id[0]:
-            uq = UnansweredQuestion(question=query)
-        else:
-            uq = q_id[1]
-        print(f"{uq=}")
+    def search(self, query: str, k: int) -> MinimalSearchResults:
         result = MinimalSearchResults(
-                question_id=uq.question_id,
+                question_id=str(uuid.uuid4()),
                 question=query,
                 retrieved_sources=self._base_search(query, k),
                 )
-        if not q_id[0]:
-            with open(f"search_results_{query}_{k}", "w", encoding="utf-8") as f:
-                f.write(result.model_dump_json(indent=2) + '\n')
+        #with open(f"{query}_{k}", "w", encoding="utf-8") as f:
+            #f.write(result.model_dump_json(indent=2) + '\n')
         return result
 
     def search_dataset(self, dataset_path: str, k: int, save_directory: str) -> StudentSearchResults:
-        if not self._check_for_index():
-            raise RAGError("Index must be built before other RAG function calls, aborting.")
-        if not is_readable_path(dataset_path):
-            raise RAGError("Dataset path given is not a readable file, aborting.")
-        answers = import_rag_questions(dataset_path)
-        results = StudentSearchResults(search_results=answers, k=k)
-        base = Path(dataset_path).name
-        output_path = Path(save_directory)
+        rag_dataset = load_model(dataset_path, RagDataset)
+        search_results = []
+        for question in rag_dataset.rag_questions:
+            search_results.append(
+                    MinimalSearchResults(
+                        question_id=question.question_id,
+                        question=question.question,
+                        retrieved_sources=self._base_search(question.question, k))
+                    )
+        student_search_results = StudentSearchResults(search_results=search_results,k=k)
         try:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-        except PermissionError:
-            raise RAGError("No permission to create the save directory.")
-        except NotADirectoryError:
-            raise RAGError("The save directory specified is not a directory.")
+            output_path.mkdir(parents=True, exist_ok=True)
+            out_file = out_dir / Path(dataset_path).name
+            with open(out_file, 'w', encoding='utf-8') as f:
+                f.write(student_search_results.model_dump_json(indent=2) + '\n')
         except OSError as e:
-            raise RAGError(f"OS Error occurred while trying to create save directory: {e}")
-        with open(save_directory / base, 'w', encoding='utf-8') as f:
-            f.write(results.model_dump_json(indent=2) + '\n')
-        return results
+            raise RAGError(f"Could not write search results to {save_directory}: {e}") from e
+        return student_search_results
 
     def answer(self, query: str, k: int) -> MinimalAnswer:
-        if self.indexer is None:
-            raise RAGError("Index must be built before other RAG function calls, aborting.")
         # print(f"{query}, k = {k}")
 
     def answer_dataset(self, student_search_results_path: str, save_directory: str) -> StudentSearchResultsAndAnswer:
-        if self.indexer is None:
-            raise RAGError("Index must be built before other RAG function calls, aborting.")
         # print(f"{student_search_results_path=}, {save_directory=}")
         # need to do JSON failsafe here
 
