@@ -2,7 +2,9 @@
 
 
 
-
+https://qwen.readthedocs.io/en/latest/getting_started/concepts.html
+https://pydantic.dev/docs/validation/dev/concepts/models/
+https://reference.langchain.com/python/langchain-text-splitters/character/RecursiveCharacterTextSplitter
 https://dev.to/klement_gunndu/10-chunking-strategies-that-make-or-break-your-rag-pipeline-4cng
 https://www.geeksforgeeks.org/artificial-intelligence/chunking-strategies/
 https://medium.com/data-science-collective/the-ultimate-text-chunking-toolkit-15-methods-with-python-code-9ef9d8f6a898

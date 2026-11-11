@@ -22,7 +22,9 @@ from src.evaluate import run_evaluation
 
 class RAG():
 
-    def __init__(self) -> None:
+    def __init__(self, raw_dir: str = 'data/raw', processed_dir: str = 'data/processed') -> None:
+        self.raw_path = Path(raw_dir)
+        self.processed_path = Path(processed_dir)
         self.indexer: None | Indexer = None
         self.chunked_corpus: list[Chunk] = []
         self.output_path: None | Path = None
@@ -58,19 +60,18 @@ class RAG():
         chunker.run()
         self.chunked_corpus.extend(chunker.chunks)
     
-    def index(self, max_chunk_size: int, raw_dir: str = 'data/raw/', out_dir: str = 'data/processed/') -> None:
-        self.output_path = Path(out_dir)
-        p_raw = Path(raw_dir)
-        print(p_raw.resolve(), p_raw.exists())
-        files = [p for p in p_raw.rglob("*") if p.is_file()]
-        print(len(files), files[:5])
+    def index(self, max_chunk_size: int) -> None:
+        files = [p for p in self.raw_path.rglob("*") if p.is_file()]
+        # print(len(files), files[:5])
         self._chunk(max_chunk_size, Path(raw_dir))
         if self.chunked_corpus is not None:
-            self.indexer = Indexer(self.chunked_corpus, False, self.output_path)
+            self.indexer = Indexer(self.chunked_corpus, False, self.processed_path)
             self.indexer.index_corpus()
-            print(f"Ingestion complete! Indexed {len(self.chunked_corpus)} chunks under {self.output_path}")
+            print(f"Ingestion complete! Indices saved under {self.processed_path}: \n"
+                  f"{len(self.chunked_corpus)} amount of chunks with"
+                  f" a chunk size of {max_chunk_size} processed and ingested.")
         else:
-            raise RAGError("No corpus found to start indexing.")
+            raise RAGError("No corpus found to start indexing, error during chunking.")
 
     def _base_search(self, query: str, k: int) -> list[MinimalSource]:
         idx_results = self._ensure_index().get_ktop_idx(query, k)
