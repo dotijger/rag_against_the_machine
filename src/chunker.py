@@ -6,8 +6,8 @@ from typing import Self
 from pathlib import Path
 import re
 
-from src.utils import read_source
 from src.error import ChunkError
+from src.models import MinimalSource
 
 class Chunk(BaseModel):
     source: MinimalSource
@@ -45,7 +45,7 @@ class Chunker():
             stop = len(self.body)
         for idx in range(start, stop, step):
             try:
-                minimal_source = minimalsource(
+                minimal_source = MinimalSource(
                             file_path=str(self.path),
                             first_character_index=idx,
                             last_character_index=min(idx + step, stop))
@@ -126,7 +126,7 @@ class Chunker():
         for cut in cuts:
             for start, end in self._windows(previous, cut):
                 try:
-                    minimal_source = minimalsource(
+                    minimal_source = MinimalSource(
                                 file_path=str(self.path),
                                 first_character_index=start,
                                 last_character_index=end)

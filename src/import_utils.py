@@ -1,45 +1,47 @@
 from pydantic import ValidationError, BaseModel
 from pathlib import Path
+from typing import Any
 import json
 
-from src.error import ImportError, RAGError
+from src.error import ImporterError, RAGError
+from src.models import MinimalSource, UnansweredQuestion, AnsweredQuestion, RagDataset
 
 def _is_readable_path(path: str) -> bool:
     if not isinstance(path, (str, Path)):
         return False
 
-    import = Path(path)
+    to_import = Path(path)
     
-    if not path.is_file():
+    if not to_import.is_file():
         return False
 
     try:
-        with import.open('r'):
+        with to_import.open('r'):
             return True
-        except (PermissionError, OSError):
-            return False
+    except (PermissionError, OSError):
+        return False
 
 def json_load(path: str) -> Any:
-    if not is_readable_path(path):
+    if not _is_readable_path(path):
         raise ImportError(f"{path} is not a readable path, aborting.")
     with open(path, encoding='utf-8') as f:
         try:
             data = json.load(f)
         except json.JSONDecodeError as e:
-            raise ImportError(e)
+            raise ImporterError(e)
         except FileNotFoundError as e:
-            raise ImportError(e)
+            raise ImporterError(e)
         except IsADirectoryError as e:
-            raise ImportError(e)
-    if not isinstance(data, dict[str, Any]):
-        raise ImportError(f"{path}: expected a JSON object, got {type(data).__name__}")
+            raise ImporterError(e)
+    if not isinstance(data, dict):
+        raise ImporterError(f"{path}: expected a JSON object, got {type(data).__name__}")
     return data
 
 def load_model[M: BaseModel](path: str, model_cls: type[M]) -> M:
     try:
         _ = json_load(path)
-    except ImportError as e:
-        raise ImportError(e)
+    except ImporterError as e:
+        raise ImporterError(e)
     try:
         return model_cls.model_validate_json(Path(path).read_text(encoding='utf-8'))
     except OSError as e:
@@ -74,10 +76,10 @@ def import_rag_dataset(path: str) -> RagDataset:
     try:
         rag_dataset = RagDataset.model_validate_json(Path(path).read_text(encoding='utf-8'))
     except ValidationError as e:
-        raise ImportError(f"{path} does not have a valid RAG dataset structure.")
+        raise ImporterError(f"{path} does not have a valid RAG dataset structure.")
     questions = dataset.get('rag_questions')
     if len(questions) == 0:
-        raise ImportError(f'{path} does not contain any questions.')
+        raise ImporterError(f'{path} does not contain any questions.')
     if questions[0].get('answer'):
         return RagDataset(
                 rag_questions=get_answered_questions(questions)
@@ -86,7 +88,7 @@ def import_rag_dataset(path: str) -> RagDataset:
             rag_question=get_unanswered_questions(questions)
             )
 
-def import_rag_questions(path: str) -> List[UnansweredQuestion]:
+def import_rag_questions(path: str) -> list[UnansweredQuestion]:
     dataset = json_load(path)
     if dataset.get('rag_questions') is None:
         raise ImportError("Dataset does not contain RAG questions, aborting.")
@@ -96,12 +98,12 @@ def import_rag_questions(path: str) -> List[UnansweredQuestion]:
         try:
             rag_questions.append(
                     UnansweredQuestion(
-                        question_id=question.get('question_id')
-                        question=question.get('question')
+                        question_id=question.get('question_id'),
+                        question=question.get('question'),
                         )
                     )
         except ValidationError as e:
-            raise ImportError(e)
+            raise ImporterError(e)
     return rag_questions
 
 def import_true_sources(path: str) -> dict[str, list[MinimalSource]]:
@@ -113,24 +115,24 @@ def import_true_sources(path: str) -> dict[str, list[MinimalSource]]:
     for question in questions:
         q_id = question.get('question_id')
         if not isinstance(q_id, str):
-            raise ImportError("Question id is not a string, aborting.")
+            raise ImporterError("Question id is not a string, aborting.")
         if q_id is None:
-            raise ImportError("Dataset entry does not contain question id, aborting.")
+            raise ImporterError("Dataset entry does not contain question id, aborting.")
         if true_sources.get(q_id):
-            raise ImportError("Dataset entry is a duplicate, aborting.")
+            raise ImporterError("Dataset entry is a duplicate, aborting.")
         true_sources[q_id] = []
         q_sources = question.get('sources')
         if q_sources is None:
-            raise ImportError("Dataset entry does not contain listed sources, aborting.")
+            raise ImporterError("Dataset entry does not contain listed sources, aborting.")
         for source in q_sources:
             try:
                 true_sources[q_id].append(
                         MinimalSource(
-                            file_path=source['file_path']
-                            first_character_index=source['first_character_index']
-                            last_character_index=source['last_character_index']
+                            file_path=source['file_path'],
+                            first_character_index=source['first_character_index'],
+                            last_character_index=source['last_character_index'],
                             )
                         )
             except (KeyError, ValidationError) as e:
-                raise ImportError(f"Could not convert source to MinimalSource: {e}, aborting.")
+                raise ImporterError(f"Could not convert source to MinimalSource: {e}, aborting.")
     return true_sources 

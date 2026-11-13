@@ -1,6 +1,13 @@
 from src.error import RAGError
-from src.import import load_model
-from src.models import StudentSearchResults, Evaluation, MinimalSource, MinimalSearchResults, AnsweredRagDataset
+from src.import_utils import load_model
+from src.models import (
+        StudentSearchResults,
+        Evaluation,
+        MinimalSource,
+        MinimalSearchResults, 
+        AnsweredQuestion,
+        RagDataset,
+        )
 
 def iou(a: tuple[int, int], b: tuple[int, int]) -> float:
     inter = max(0, min(a[1], b[1]) - max(a[0], b[0]))

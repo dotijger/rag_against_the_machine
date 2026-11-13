@@ -49,6 +49,6 @@ class StudentSearchResultsAndAnswer(BaseModel):
 class Evaluation(BaseModel):
     eval_id: str = Field(default_factory=lambda:str(uuid.uuid4())) 
     metrics: list[tuple[int, float]]
-    k: k
+    k: int
     count: int
 

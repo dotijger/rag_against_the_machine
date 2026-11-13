@@ -1,4 +1,4 @@
-class ImportError(BaseException):
+class ImporterError(BaseException):
     pass
 
 class ChunkError(BaseException):
