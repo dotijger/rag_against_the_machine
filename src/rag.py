@@ -1,12 +1,14 @@
 import bm25s
+from tqdm import tqdm
 from pathlib import Path
 from pydantic import ValidationError
 import json
 
-from src.chunker import Chunk, Chunker
+from src.chunker import Chunker
 from src.index import Indexer
 from src.models import (
         MinimalSource,
+        Chunk,
         MinimalSearchResults,
         UnansweredQuestion,
         AnsweredQuestion,
@@ -14,7 +16,8 @@ from src.models import (
         StudentSearchResults,
         StudentSearchResultsAndAnswer,
         RagDataset,
-        Evaluation
+        Evaluation,
+        SourceKey,
         )
 from src.error import RAGError
 from src.import_utils import load_model
@@ -28,6 +31,7 @@ class RAG():
         self.processed_path = Path(processed_dir)
         self.indexer: None | Indexer = None
         self.chunked_corpus: list[Chunk] = []
+        self.chunk_by_source: dict[SourceKey, Chunk] = {}
         self.supported: list[str] = ['.md', '.py', '.txt']
         self.model = AnswerGenerator(model_name)
    
@@ -46,6 +50,7 @@ class RAG():
                            "`uv run python3 -m src index --max_chunk_size <int?`")
         self.indexer = Indexer(corpus=chunks, loaded=True, output_path=self.processed_path)
         self.chunked_corpus = chunks
+        self.chunk_by_source = {(c.file_path, c.first_character_index, c.last_character_index): c for c in self.chunked_corpus}
         return self.indexer
     
     def _chunk(self, max_chunk_size: int, path: Path) -> None:
@@ -71,42 +76,47 @@ class RAG():
         else:
             raise RAGError("No corpus found to start indexing, error during chunking.")
 
-    def _base_search(self, query: str, k: int) -> list[MinimalSource]:
-        idx_results = self._ensure_index().get_ktop_idx(query, k)
-        retrieved_sources = [self.chunked_corpus[i].source for i in idx_results]
-        return retrieved_sources
+    @staticmethod
+    def _get_minimal_source(chunk: Chunk) -> MinimalSource:
+        return MinimalSource(
+                file_path=chunk.file_path,
+                first_character_index=chunk.first_character_index,
+                last_character_index=chunk.last_character_index)
 
-    def _base_search_chunk(self, query: str, k: int) -> list[MinimalSource]:
-        idx_results = self._ensure_index().get_ktop_idx(query, k)
-        retrieved_sources = [self.chunked_corpus[i] for i in idx_results]
-        return retrieved_sources
-   
+    def _base_search(self, query: str, k: int) -> list[int]:
+        return self._ensure_index().get_ktop_idx(query, k)
+
     def _search_with_chunks(self, query: str, k: int) -> tuple[list[Chunk], MinimalSearchResults]:
-        chunks = self_base_search_chunk(query, k)
+        sources_idx = self_base_search(query, k)
+        chunks = [self.chunked_corpus[i] for i in sources_idx]
         result = MinimalSearchResults(
                 question_id=str(uuid.uuid4()),
                 question=query,
-                retrieved_sources=[chunks.source for c in chunks])
+                retrieved_sources=[self._get_minimal_source(c) for c in chunks])
         return (chunks, result)
 
     def search(self, query: str, k: int) -> MinimalSearchResults:
+        source_idx = self._base_search(query, k)
+        sources = [self._get_minimal_source(self.chunked_corpus[i]) for i in sources_idx]
         result = MinimalSearchResults(
                 question_id=str(uuid.uuid4()),
                 question=query,
-                retrieved_sources=self._base_search(query, k),
+                retrieved_sources=sources,
                 )
         return result
 
     def search_dataset(self, dataset_path: str, k: int, save_directory: str) -> StudentSearchResults:
         rag_dataset = load_model(dataset_path, RagDataset)
         search_results = []
-        for question in rag_dataset.rag_questions:
+        for i in tqdm(range(len(rag_dataset.rag_questions))):
+            question = rag_dataset.rag_questions[i]
+            sources_idx = self._base_search(question.question, k)
             search_results.append(
                     MinimalSearchResults(
                         question_id=question.question_id,
                         question=question.question,
-                        retrieved_sources=self._base_search(question.question, k))
-                    )
+                        retrieved_sources=[self._get_minimal_source(self.chunked_corpus[i]) for i in sources_idx]
+                    ))
         student_search_results = StudentSearchResults(search_results=search_results,k=k)
         try:
             output_dir = Path(save_directory)
@@ -120,17 +130,26 @@ class RAG():
 
     def answer(self, query: str, k: int) -> MinimalAnswer:
         chunks, search_results = self._search_with_chunks(query, k)
-        return self.model.run(query, search_results, chunks)
+        return self.model.run(search_results, chunks)
 
+    def _get_chunks_from_sources(self, sources: list[MinimalSource]) -> list[Chunk]:
+        def _key(src: MinimalSource) -> SourceKey:
+            return (src.file_path, src.first_character_index, src.last_character_index)
+        self._ensure_index()
+        return [self.chunk_by_source[_key(s)] for s in sources]
+
+    def _answer(self, query: str, search_results: MinimalSearchResults) -> MinimalAnswer:
+        chunks = self._get_chunks_from_sources(search_results.retrieved_sources)
+        return self.model.run(search_results, chunks)
+    
     def answer_dataset(self, student_search_results_path: str, save_directory: str) -> StudentSearchResultsAndAnswer:
         list_of_answers = []
         student_search_results = load_model(student_search_results_path, StudentSearchResults)
         search_results = student_search_results.search_results
-        for question in search_results:
-            query = search_results.question
-            list_of_answers.append(self.answer(query, k))
-            # this is not working fully yet, reread the code, i need to pass on both the chunks
-            # and the list[minimalsource] etc to the answergenerator 
+        for i in tqdm(range(len(search_results)), desc='Generating answers...'):
+            question = search_results[i]
+            query = question.question
+            list_of_answers.append(self._answer(query, question))
         search_results_answer = StudentSearchResultsAndAnswer(
                 search_results=list_of_answers, k=student_search_results.k)
         try:
@@ -143,5 +162,5 @@ class RAG():
             raise RAGError(f"Could not write search and answer results to {save_directory}: {e}") from e
         return search_results_answer
 
-    def evaluate(student_search_results_path: str, dataset_path: str) -> Evaluation:
+    def evaluate(self, student_search_results_path: str, dataset_path: str) -> Evaluation:
         return run_evaluation(student_search_results_path, dataset_path)

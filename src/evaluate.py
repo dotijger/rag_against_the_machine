@@ -49,7 +49,7 @@ def get_recall_k(k: int, student_results: dict[str, list[MinimalSource]], rag_qu
 def run_evaluation(search_path: str, dataset_path: str) -> Evaluation:
     range_k = [1, 3, 5, 10]
     student_results = load_model(search_path, StudentSearchResults)
-    true_sources = load_model(dataset_path, AnsweredRagDataset)
+    true_sources = load_model(dataset_path, RagDataset)
 
     metrics = []
     student_k = student_results.k
@@ -62,7 +62,7 @@ def run_evaluation(search_path: str, dataset_path: str) -> Evaluation:
     return Evaluation(
         metrics=metrics,
         k=student_k,
-        count=len(true_sources)
+        count=len(true_sources.rag_questions)
         )
 
 

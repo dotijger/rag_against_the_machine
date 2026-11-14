@@ -1,6 +1,6 @@
 import uuid
-from pydantic import BaseModel, Field, ConfigDict
-from typing import TypedDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
+from typing import NamedTuple, Self
 
 # represents a single source of information
 class MinimalSource(BaseModel):
@@ -46,9 +46,27 @@ class StudentSearchResultsAndAnswer(BaseModel):
     search_results: list[MinimalAnswer]
     k: int
 
+class Chunk(MinimalSource):
+    text: str
+
+    @model_validator(mode='after')
+    def verify(self) -> Self:
+        start = self.first_character_index
+        end = self.last_character_index
+        if start >= end:
+            raise ValueError("Chunk start index exceeds end index.")
+        if len(self.text) != (end - start):
+            raise ValueError("Chunk size exceeds start and end range.")
+        return self
+
 class Evaluation(BaseModel):
     eval_id: str = Field(default_factory=lambda:str(uuid.uuid4())) 
     metrics: list[tuple[int, float]]
     k: int
     count: int
+
+class SourceKey(NamedTuple):
+    file_path: str
+    start: int
+    end: int
 

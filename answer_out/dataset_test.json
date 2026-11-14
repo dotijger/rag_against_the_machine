@@ -1,0 +1,176 @@
+{
+  "search_results": [
+    {
+      "question_id": "189c8b8a-e59c-4fca-92ad-c02df42cbe40",
+      "question": "What activation formats does the fused batched MoE layer return in vLLM?",
+      "retrieved_sources": [
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/quantization/compressed_tensors/compressed_tensors_moe.py",
+          "first_character_index": 15018,
+          "last_character_index": 17004
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/lora/models.py",
+          "first_character_index": 1788,
+          "last_character_index": 2340
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/quantization/modelopt.py",
+          "first_character_index": 61074,
+          "last_character_index": 63065
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/quantization/utils/marlin_utils.py",
+          "first_character_index": 6911,
+          "last_character_index": 7869
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/quantization/compressed_tensors/compressed_tensors_moe.py",
+          "first_character_index": 36065,
+          "last_character_index": 38043
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/quantization/fp8.py",
+          "first_character_index": 45042,
+          "last_character_index": 47023
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/quantization/quark/quark_moe.py",
+          "first_character_index": 11824,
+          "last_character_index": 13751
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/docs/design/fused_moe_modular_kernel.md",
+          "first_character_index": 0,
+          "last_character_index": 1786
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/quantization/auto_round.py",
+          "first_character_index": 4747,
+          "last_character_index": 6726
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/quantization/fp8.py",
+          "first_character_index": 35161,
+          "last_character_index": 37144
+        }
+      ],
+      "answer": "The fused batched MoE layer returns activations as a tensor of shape (num_experts, max_tokens, K), where each expert's tokens are batched together."
+    },
+    {
+      "question_id": "02789461-05fd-435d-9673-91606102d6c9",
+      "question": "What are the default values for FP8_MIN and FP8_MAX constants in vLLM's triton_flash_attention module?",
+      "retrieved_sources": [
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/quantization/utils/fp8_utils.py",
+          "first_character_index": 14258,
+          "last_character_index": 15664
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/tests/kernels/quantization/test_block_fp8.py",
+          "first_character_index": 2392,
+          "last_character_index": 3626
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/benchmarks/kernels/benchmark_w8a8_block_fp8.py",
+          "first_character_index": 5503,
+          "last_character_index": 7306
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/tests/kernels/quant_utils.py",
+          "first_character_index": 6195,
+          "last_character_index": 7162
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/quantization/utils/fp8_utils.py",
+          "first_character_index": 8668,
+          "last_character_index": 10221
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/tests/kernels/moe/test_triton_moe_ptpc_fp8.py",
+          "first_character_index": 4076,
+          "last_character_index": 5786
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/fused_moe/batched_deep_gemm_moe.py",
+          "first_character_index": 5492,
+          "last_character_index": 6025
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/tests/kernels/moe/test_deepgemm.py",
+          "first_character_index": 690,
+          "last_character_index": 2467
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/quantization/utils/fp8_utils.py",
+          "first_character_index": 10221,
+          "last_character_index": 12185
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/tests/kernels/moe/test_deepep_deepgemm_moe.py",
+          "first_character_index": 2690,
+          "last_character_index": 4026
+        }
+      ],
+      "answer": "The default values for FP8_MIN and FP8_MAX constants in vLLM's triton_flash_attention module are `torch.float8_e4m3fn`. These values are used to define the range of values that can be stored in a float8 tensor."
+    },
+    {
+      "question_id": "e852801e-b909-4360-82ea-cedb2a1be919",
+      "question": "What determines whether vLLM's sampler returns Pythonized results or deferred Pythonization arguments?",
+      "retrieved_sources": [
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/sampler.py",
+          "first_character_index": 27225,
+          "last_character_index": 28492
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/sampler.py",
+          "first_character_index": 21626,
+          "last_character_index": 23310
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/sampler.py",
+          "first_character_index": 2857,
+          "last_character_index": 4843
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/sampler.py",
+          "first_character_index": 1284,
+          "last_character_index": 2284
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/sampler.py",
+          "first_character_index": 8099,
+          "last_character_index": 10088
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/sampler.py",
+          "first_character_index": 10088,
+          "last_character_index": 12075
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/model_executor/layers/sampler.py",
+          "first_character_index": 12075,
+          "last_character_index": 13738
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/executor/executor_base.py",
+          "first_character_index": 2762,
+          "last_character_index": 4724
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/docs/design/huggingface_integration.md",
+          "first_character_index": 0,
+          "last_character_index": 1820
+        },
+        {
+          "file_path": "data/raw/vllm-0.10.1/vllm/platforms/interface.py",
+          "first_character_index": 14707,
+          "last_character_index": 16701
+        }
+      ],
+      "answer": "The sampling type determines whether vLLM's sampler returns Pythonized results or deferred Pythonization arguments."
+    }
+  ],
+  "k": 10
+}

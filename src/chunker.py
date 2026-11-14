@@ -7,21 +7,7 @@ from pathlib import Path
 import re
 
 from src.error import ChunkError
-from src.models import MinimalSource
-
-class Chunk(BaseModel):
-    source: MinimalSource
-    text: str
-
-    @model_validator(mode='after')
-    def verify(self) -> Self:
-        start = self.source.first_character_index
-        end = self.source.last_character_index
-        if start >= end:
-            raise ValueError("Chunk start index exceeds end index.")
-        if len(self.text) != (end - start):
-            raise ValueError("Chunk size exceeds start and end range.")
-        return self
+from src.models import MinimalSource, Chunk
 
 class Chunker():
     SUPPORTED = ['.txt', '.md', '.py']
@@ -45,13 +31,11 @@ class Chunker():
             stop = len(self.body)
         for idx in range(start, stop, step):
             try:
-                minimal_source = MinimalSource(
+                self.chunks.append(Chunk(
                             file_path=str(self.path),
                             first_character_index=idx,
-                            last_character_index=min(idx + step, stop))
-                self.chunks.append(Chunk(
-                              source=minimal_source,
-                              text=self.body[idx:idx+step]))
+                            last_character_index=min(idx + step, stop),                          
+                            text=self.body[idx:idx+step]))
             except ValidationError as e:
                 raise ValueError(e)
     
@@ -88,7 +72,7 @@ class Chunker():
                 previous = line
             offset += len(line) + 1
         cuts.append(len(self.body))
-        self._chunkify(cuts)
+        self._chunkify(self._merge(cuts))
 
 
     def _md(self) -> None:
@@ -107,7 +91,7 @@ class Chunker():
                     cuts.append(offset)
             offset += len(line) + 1
         cuts.append(len(self.body))
-        self._chunkify(cuts)
+        self._chunkify(self._merge(cuts))
     
     def _windows(self, start: int, end: int) -> list[tuple[int, int]]:
         step = self.max_chunk_size
@@ -120,19 +104,37 @@ class Chunker():
         ranges.append((start, end))
         return ranges
 
+    def _merge(self, cuts: list[int]) -> list[int]:
+        merged: list[int] = []
+        start = 0
+        pending: int | None = None
+        for cut in cuts:
+            if cut - start <= self.max_chunk_size:
+                pending = cut
+                continue
+            if pending is not None:
+                merged.append(pending)
+                start = pending
+            pending = cut
+            if cut - start > self.max_chunk_size:
+                merged.append(cut)
+                start = cut
+                pending = None
+        if pending is not None:
+            merged.append(pending)
+        return merged
+
     def _chunkify(self, cuts: list[int]) -> None:
         previous = 0
         # print(f"{cuts=}")
         for cut in cuts:
             for start, end in self._windows(previous, cut):
                 try:
-                    minimal_source = MinimalSource(
+                    self.chunks.append(Chunk(
                                 file_path=str(self.path),
                                 first_character_index=start,
-                                last_character_index=end)
-                    self.chunks.append(Chunk(
-                                  source=minimal_source,
-                                  text=self.body[start:end]))
+                                last_character_index=end,
+                                text=self.body[start:end]))
                 except ValidationError as e:
                     raise ValueError(e)
             previous = cut

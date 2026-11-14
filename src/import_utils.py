@@ -23,7 +23,7 @@ def _is_readable_path(path: str) -> bool:
 
 def json_load(path: str) -> Any:
     if not _is_readable_path(path):
-        raise ImportError(f"{path} is not a readable path, aborting.")
+        raise ImporterError(f"{path} is not a readable path, aborting.")
     with open(path, encoding='utf-8') as f:
         try:
             data = json.load(f)
