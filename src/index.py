@@ -25,8 +25,7 @@ class Indexer():
                 f.write(c.model_dump_json() + '\n')
 
     def index_corpus(self) -> None:
-        corpus_tokens = tqdm([tokenize(c.text) for c in self.corpus], desc='Indexing corpus...')
-        print(len(self.corpus), sum(len(t) for t in corpus_tokens))
+        corpus_tokens = [tokenize(c.text) for c in tqdm(self.corpus, desc="Tokenizing corpus...")]
         self.retriever.index(corpus_tokens, show_progress=True)
         self.retriever.save(self.output_path / "bm25s")
         self._save_chunk_lib()

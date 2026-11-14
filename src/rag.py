@@ -54,9 +54,11 @@ class RAG():
         return self.indexer
     
     def _chunk(self, max_chunk_size: int, path: Path) -> None:
-        for p in sorted(path.rglob('*')):
-            if p.is_file() and p.suffix in self.supported:
-                self._ingest_and_chunk(max_chunk_size, p)
+        files = sorted(
+            p for p in path.rglob("*")
+            if p.is_file() and p.suffix in self.supported)
+        for p in tqdm(files, desc="Chunking corpus..."):
+            self._ingest_and_chunk(max_chunk_size, p)
 
     def _ingest_and_chunk(self, max_chunk_size: int, path: Path) -> None:
         chunker = Chunker(path=path, max_chunk_size=max_chunk_size)
@@ -70,9 +72,8 @@ class RAG():
         if self.chunked_corpus is not None:
             self.indexer = Indexer(self.chunked_corpus, False, self.processed_path)
             self.indexer.index_corpus()
-            print(f"Ingestion complete! Indices saved under {self.processed_path}: \n"
-                  f"{len(self.chunked_corpus)} amount of chunks with"
-                  f" a chunk size of {max_chunk_size} processed and ingested.")
+            print(f"Ingestion complete! Indexed {len(self.chunked_corpus)} "
+                  f"chunks under {self.processed_path}.")
         else:
             raise RAGError("No corpus found to start indexing, error during chunking.")
 
@@ -124,6 +125,7 @@ class RAG():
             out_file = output_dir / Path(dataset_path).name
             with open(out_file, 'w', encoding='utf-8') as f:
                 f.write(student_search_results.model_dump_json(indent=2) + '\n')
+            print(f"Saved student_search_results to {out_file}")
         except OSError as e:
             raise RAGError(f"Could not write search results to {save_directory}: {e}") from e
         return student_search_results
@@ -158,6 +160,7 @@ class RAG():
             out_file = output_dir / Path(student_search_results_path).name
             with open(out_file, 'w', encoding='utf-8') as f:
                 f.write(search_results_answer.model_dump_json(indent=2) + '\n')
+            print(f"Saved student_search_results_and_answer to {out_file}")
         except OSError as e:
             raise RAGError(f"Could not write search and answer results to {save_directory}: {e}") from e
         return search_results_answer
