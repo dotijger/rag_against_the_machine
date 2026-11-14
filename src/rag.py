@@ -167,4 +167,4 @@ class RAG():
         metrics = evaluation_scores.metrics
         print("Evaluation Results\n========================================")
         for metric in metrics:
-            print(f"Recall@{metric[0]}: {round(metric[1], 3)} ", end="")
+            print(f"Recall@{metric[0]}: {metric[1]:.3f} ", end="")
