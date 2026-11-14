@@ -26,14 +26,13 @@ from src.transformer import AnswerGenerator
 
 class RAG():
 
-    def __init__(self, raw_dir: str = 'data/raw', processed_dir: str = 'data/processed', model_name: str = 'Qwen/Qwen3-0.6B') -> None:
+    def __init__(self, raw_dir: str = 'data/raw', processed_dir: str = 'data/processed') -> None:
         self.raw_path = Path(raw_dir)
         self.processed_path = Path(processed_dir)
         self.indexer: None | Indexer = None
         self.chunked_corpus: list[Chunk] = []
         self.chunk_by_source: dict[SourceKey, Chunk] = {}
         self.supported: list[str] = ['.md', '.py', '.txt']
-        self.model = AnswerGenerator(model_name)
    
     def _ensure_index(self) -> Indexer:
         if self.indexer:
@@ -130,9 +129,13 @@ class RAG():
             raise RAGError(f"Could not write search results to {save_directory}: {e}") from e
         return student_search_results
 
+    def _generate_answer(self, search_results: MinimalSearchResults, chunks: list[Chunk]) -> MinimalAnswer:
+        model = AnswerGenerator()
+        return model.run(search_results, chunks)
+
     def answer(self, query: str, k: int) -> MinimalAnswer:
         chunks, search_results = self._search_with_chunks(query, k)
-        return self.model.run(search_results, chunks)
+        return self._generate_answer(search_results, chunks)
 
     def _get_chunks_from_sources(self, sources: list[MinimalSource]) -> list[Chunk]:
         def _key(src: MinimalSource) -> SourceKey:
@@ -140,9 +143,9 @@ class RAG():
         self._ensure_index()
         return [self.chunk_by_source[_key(s)] for s in sources]
 
-    def _answer(self, query: str, search_results: MinimalSearchResults) -> MinimalAnswer:
+    def _answer_from_search_results(self, query: str, search_results: MinimalSearchResults) -> MinimalAnswer:
         chunks = self._get_chunks_from_sources(search_results.retrieved_sources)
-        return self.model.run(search_results, chunks)
+        return self._generate_answer(search_results, chunks)
     
     def answer_dataset(self, student_search_results_path: str, save_directory: str) -> StudentSearchResultsAndAnswer:
         list_of_answers = []
@@ -151,7 +154,7 @@ class RAG():
         for i in tqdm(range(len(search_results)), desc='Generating answers...'):
             question = search_results[i]
             query = question.question
-            list_of_answers.append(self._answer(query, question))
+            list_of_answers.append(self._answer_from_search_results(query, question))
         search_results_answer = StudentSearchResultsAndAnswer(
                 search_results=list_of_answers, k=student_search_results.k)
         try:
