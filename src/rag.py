@@ -163,4 +163,8 @@ class RAG():
         return search_results_answer
 
     def evaluate(self, student_search_results_path: str, dataset_path: str) -> Evaluation:
-        return run_evaluation(student_search_results_path, dataset_path)
+        evaluation_scores = run_evaluation(student_search_results_path, dataset_path)
+        metrics = evaluation_scores.metrics
+        print("Evaluation Results\n========================================")
+        for metric in metrics:
+            print(f"Recall@{metric[0]}: {round(metric[1], 3)} ", end="")

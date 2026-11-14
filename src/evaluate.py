@@ -48,9 +48,14 @@ def get_recall_k(k: int, student_results: dict[str, list[MinimalSource]], rag_qu
 
 def run_evaluation(search_path: str, dataset_path: str) -> Evaluation:
     range_k = [1, 3, 5, 10]
-    student_results = load_model(search_path, StudentSearchResults)
+    try:
+        student_results = load_model(search_path, StudentSearchResults)
+        print("Student data is valid: True")
+    except ImporterError as e:
+        print("Student data is valid: False")
+        raise ImporterError(e)
     true_sources = load_model(dataset_path, RagDataset)
-
+    
     metrics = []
     student_k = student_results.k
     student_dict = get_student_search_dict(student_results.search_results)
