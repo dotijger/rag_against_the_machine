@@ -28,7 +28,7 @@ from src.transformer import AnswerGenerator
 
 class RAG():
 
-    def __init__(self, raw_dir: str = 'data/raw', processed_dir: str = 'data/processed') -> None:
+    def __init__(self, raw_dir: str, processed_dir: str) -> None:
         self.raw_path = Path(raw_dir)
         self.processed_path = Path(processed_dir)
         self.indexer: None | Indexer = None
@@ -107,7 +107,7 @@ class RAG():
                 )
         return result
 
-    def search_dataset(self, dataset_path: str, k: int, save_directory: str, mode: Mode = "bm25s") -> StudentSearchResults:
+    def search_dataset(self, dataset_path: str, k: int, save_directory: str, mode: Mode = "bm25") -> StudentSearchResults:
         rag_dataset = load_model(dataset_path, RagDataset)
         search_results = []
         for i in tqdm(range(len(rag_dataset.rag_questions))):
@@ -171,8 +171,4 @@ class RAG():
         return search_results_answer
 
     def evaluate(self, student_search_results_path: str, dataset_path: str) -> Evaluation:
-        evaluation_scores = run_evaluation(student_search_results_path, dataset_path)
-        metrics = evaluation_scores.metrics
-        print("Evaluation Results\n========================================")
-        for metric in metrics:
-            print(f"Recall@{metric[0]}: {metric[1]:.3f} ", end="")
+        return run_evaluation(student_search_results_path, dataset_path)

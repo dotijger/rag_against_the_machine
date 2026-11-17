@@ -1,5 +1,9 @@
+from rich.console import Console
+import sys
+import fire
 
-from src.rag import RAG
+
+from src.cli import CLI
 from src.error import (
         RAGError,
         IndexError,
@@ -7,16 +11,13 @@ from src.error import (
         ImporterError,
         )
 
-import sys
-import fire
-
-
 if __name__ == "__main__":
+    c = Console()
     try:
-        fire.Fire(RAG())
+        fire.Fire(CLI())
     except (ValueError, RAGError, IndexError, ChunkError, ImporterError, TypeError) as e:
-        print(e)
+        c.print(e, style="bold red")
         sys.exit(1)
     except KeyboardInterrupt as e:
-        print(e)
+        c.print(e, style="bold red")
         sys.exit(1)
