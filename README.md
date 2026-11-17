@@ -39,3 +39,5 @@ https://tqdm.github.io/
 https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf
 https://www.youtube.com/watch?v=mxq4TkuVrWA
 BOOK: Introduction to Information Retrieval (CH2, 6, 11)
+https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2
+https://levelup.gitconnected.com/all-minilm-l6-v2-358e826ef499

@@ -1,6 +1,6 @@
 import uuid
 from pydantic import BaseModel, Field, ConfigDict, model_validator
-from typing import NamedTuple, Self
+from typing import NamedTuple, Self, Literal
 
 # represents a single source of information
 class MinimalSource(BaseModel):
@@ -69,4 +69,6 @@ class SourceKey(NamedTuple):
     file_path: str
     start: int
     end: int
+
+Mode = Literal['bm25', 'semantic', 'hybrid']
 

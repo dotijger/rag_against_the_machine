@@ -3,6 +3,7 @@ from tqdm import tqdm
 from pathlib import Path
 from pydantic import ValidationError
 import json
+import uuid
 
 from src.chunker import Chunker
 from src.index import Indexer
@@ -18,6 +19,7 @@ from src.models import (
         RagDataset,
         Evaluation,
         SourceKey,
+        Mode,
         )
 from src.error import RAGError
 from src.import_utils import load_model
@@ -33,8 +35,8 @@ class RAG():
         self.chunked_corpus: list[Chunk] = []
         self.chunk_by_source: dict[SourceKey, Chunk] = {}
         self.supported: list[str] = ['.md', '.py', '.txt']
-   
-    def _ensure_index(self) -> Indexer:
+
+    def _ensure_index(self, mode) -> Indexer:
         if self.indexer:
             return self.indexer
         chunks_file = self.processed_path / 'chunks.jsonl'
@@ -47,7 +49,7 @@ class RAG():
         except ValidationError as e:
             raise RAGError("Corrupted chunks.jsonl file, rebuild index first by running:\n"
                            "`uv run python3 -m src index --max_chunk_size <int?`")
-        self.indexer = Indexer(corpus=chunks, loaded=True, output_path=self.processed_path)
+        self.indexer = Indexer(corpus=chunks, loaded=True, output_path=self.processed_path, mode=mode)
         self.chunked_corpus = chunks
         self.chunk_by_source = {(c.file_path, c.first_character_index, c.last_character_index): c for c in self.chunked_corpus}
         return self.indexer
@@ -64,13 +66,13 @@ class RAG():
         chunker.run()
         self.chunked_corpus.extend(chunker.chunks)
     
-    def index(self, max_chunk_size: int) -> None:
+    def index(self, max_chunk_size: int, mode: Mode = 'bm25') -> None:
         files = [p for p in self.raw_path.rglob("*") if p.is_file()]
         # print(len(files), files[:5])
         self._chunk(max_chunk_size, self.raw_path)
         if self.chunked_corpus is not None:
-            self.indexer = Indexer(self.chunked_corpus, False, self.processed_path)
-            self.indexer.index_corpus()
+            self.indexer = Indexer(self.chunked_corpus, False, self.processed_path, mode)
+            self.indexer.index_corpus(mode)
             print(f"Ingestion complete! Indexed {len(self.chunked_corpus)} "
                   f"chunks under {self.processed_path}.")
         else:
@@ -83,11 +85,11 @@ class RAG():
                 first_character_index=chunk.first_character_index,
                 last_character_index=chunk.last_character_index)
 
-    def _base_search(self, query: str, k: int) -> list[int]:
-        return self._ensure_index().get_ktop_idx(query, k)
+    def _base_search(self, query: str, k: int, mode: Mode) -> list[int]:
+        return self._ensure_index(mode).get_ktop_idx(query, k, mode)
 
-    def _search_with_chunks(self, query: str, k: int) -> tuple[list[Chunk], MinimalSearchResults]:
-        sources_idx = self_base_search(query, k)
+    def _search_with_chunks(self, query: str, k: int, mode: Mode) -> tuple[list[Chunk], MinimalSearchResults]:
+        sources_idx = self._base_search(query, k, mode)
         chunks = [self.chunked_corpus[i] for i in sources_idx]
         result = MinimalSearchResults(
                 question_id=str(uuid.uuid4()),
@@ -95,8 +97,8 @@ class RAG():
                 retrieved_sources=[self._get_minimal_source(c) for c in chunks])
         return (chunks, result)
 
-    def search(self, query: str, k: int) -> MinimalSearchResults:
-        source_idx = self._base_search(query, k)
+    def search(self, query: str, k: int, mode: Mode = "bm25") -> MinimalSearchResults:
+        sources_idx = self._base_search(query, k, mode)
         sources = [self._get_minimal_source(self.chunked_corpus[i]) for i in sources_idx]
         result = MinimalSearchResults(
                 question_id=str(uuid.uuid4()),
@@ -105,12 +107,12 @@ class RAG():
                 )
         return result
 
-    def search_dataset(self, dataset_path: str, k: int, save_directory: str) -> StudentSearchResults:
+    def search_dataset(self, dataset_path: str, k: int, save_directory: str, mode: Mode = "bm25s") -> StudentSearchResults:
         rag_dataset = load_model(dataset_path, RagDataset)
         search_results = []
         for i in tqdm(range(len(rag_dataset.rag_questions))):
             question = rag_dataset.rag_questions[i]
-            sources_idx = self._base_search(question.question, k)
+            sources_idx = self._base_search(question.question, k, mode)
             search_results.append(
                     MinimalSearchResults(
                         question_id=question.question_id,
@@ -133,19 +135,19 @@ class RAG():
         model = AnswerGenerator()
         return model.run(search_results, chunks)
 
-    def answer(self, query: str, k: int) -> MinimalAnswer:
-        chunks, search_results = self._search_with_chunks(query, k)
+    def answer(self, query: str, k: int, mode: Mode = "bm25s") -> MinimalAnswer:
+        chunks, search_results = self._search_with_chunks(query, k, mode)
         return self._generate_answer(search_results, chunks)
 
     def _get_chunks_from_sources(self, sources: list[MinimalSource]) -> list[Chunk]:
         def _key(src: MinimalSource) -> SourceKey:
             return (src.file_path, src.first_character_index, src.last_character_index)
-        self._ensure_index()
+        self._ensure_index(mode)
         return [self.chunk_by_source[_key(s)] for s in sources]
 
     def _answer_from_search_results(self, query: str, search_results: MinimalSearchResults) -> MinimalAnswer:
         chunks = self._get_chunks_from_sources(search_results.retrieved_sources)
-        return self._generate_answer(search_results, chunks)
+        return self._generate_answer(search_results, chunks, mode)
     
     def answer_dataset(self, student_search_results_path: str, save_directory: str) -> StudentSearchResultsAndAnswer:
         list_of_answers = []
