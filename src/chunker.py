@@ -1,4 +1,6 @@
-# chunking strategies for 1 python code chunking (.py) and 2 markdown / text chunking (.txt, .md)
+# chunking strategies:
+# 1 python code chunking (.py)
+# 2 markdown / text chunking (.txt, .md)
 # use of TD-IDF -> BM25 lexical retieving methods
 
 from pydantic import ValidationError
@@ -20,13 +22,13 @@ class Chunker():
         self.max_chunk_size = max_chunk_size
         self.chunks: list[Chunk] = []
         self.body: str = ""
-    
+
     def _read_source(self) -> None:
         with open(self.path, encoding="utf-8") as f:
             self.body = f.read()
 
     # added start and stop that default to the full unchunked file body but
-    # useful for if i need to use this for a select part of the text -- so parts
+    # useful for if i need to use this for a select part of the text, so parts
     # that do not fall under the ast tree or are too big etc - final resort
     def _window_chunker(self, start: int = 0, stop: int = -1) -> None:
         step = self.max_chunk_size
@@ -37,11 +39,11 @@ class Chunker():
                 self.chunks.append(Chunk(
                             file_path=str(self.path),
                             first_character_index=idx,
-                            last_character_index=min(idx + step, stop),                          
+                            last_character_index=min(idx + step, stop),
                             text=self.body[idx:idx+step]))
             except ValidationError as e:
                 raise ChunkError(e)
-    
+
     def run(self) -> None:
         if self.path.suffix not in self.SUPPORTED:
             log.warning(f"Skipping '{self.path}', file type not supported.")
@@ -75,7 +77,6 @@ class Chunker():
         cuts.append(len(self.body))
         self._chunkify(self._merge(cuts))
 
-
     def _md(self) -> None:
         heading = re.compile(r"#{1,6}\s")
         code_header = re.compile(r"(```|~~~)")
@@ -93,7 +94,7 @@ class Chunker():
             offset += len(line) + 1
         cuts.append(len(self.body))
         self._chunkify(self._merge(cuts))
-    
+
     def _windows(self, start: int, end: int) -> list[tuple[int, int]]:
         step = self.max_chunk_size
         ranges = []
@@ -140,6 +141,7 @@ class Chunker():
                     raise ValueError(e)
             previous = cut
 
+
 if __name__ == "__main__":
     p = Path('test')
     for p in list(p.glob('*.md')):
@@ -156,4 +158,3 @@ if __name__ == "__main__":
         ch.run()
         for c in ch.chunks:
             print(f"{c.file_path=}\n{c.start=}\n{c.end=}\n{c.text=}")
-

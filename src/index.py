@@ -19,6 +19,8 @@ class Indexer():
     
     def __init__(self, corpus: list[Chunk], loaded: bool, output_path: Path, mode: Mode) -> None:
         self.corpus = corpus
+        if mode = 'bm25':
+            (output_path / 'embeddings.npy').unlink(missing_ok=True)
         if mode != 'bm25':
             self.minilm_retriever = SentenceTransformer(
                     'sentence-transformers/all-MiniLM-L6-v2',
@@ -33,6 +35,9 @@ class Indexer():
                     self.minilm_embeddings = np.load(output_path / 'embeddings.npy')
                 except OSError as e:
                     raise IndexerError(f"{e}") from e
+                if self.minilm_embeddings.shape[0] != len(corpus):
+                    raise IndexerError("Stale semantic index! Re-run index with semantic"
+                                       "or hybrid mode. Embeddings do not match chunks.jsonl")
         self.output_path = output_path
 
     def _save_chunk_lib(self) -> None:
@@ -81,7 +86,7 @@ class Indexer():
         if mode == 'semantic':
             return self._get_fetchk_idx(k, query, 'semantic')
         if mode == 'hybrid':
-            fetch_k = 60
+            fetch_k = min(60, len(self.corpus))
             bm25_ranks = self._get_fetchk_idx(fetch_k, query, 'bm25')
             semantic_ranks = self._get_fetchk_idx(fetch_k, query, 'semantic')
             return (rrf(fetch_k, bm25_ranks, semantic_ranks)[:k])

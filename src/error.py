@@ -1,11 +1,14 @@
+class RAGError(Exception):
+    pass
+
+
 class ImporterError(RAGError):
     pass
+
 
 class ChunkError(RAGError):
     pass
 
-class IndexingError(RAGError):
-    pass
 
-class RAGError(Exception):
+class IndexerError(RAGError):
     pass

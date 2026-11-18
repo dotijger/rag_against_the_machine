@@ -42,7 +42,7 @@ class RAGMachine():
         self.model: AnswerGenerator | None = None
 
     def _check_k(self, k: int) -> None:
-        if k > len(self.chunked_corpus):
+        if k >= len(self.chunked_corpus):
             raise RAGError(
                     "Parameter k cannot be larger than"
                     " the amount of chunks in the source corpus.")
@@ -95,6 +95,7 @@ class RAGMachine():
         elapsed = time.perf_counter() - start
         log.info(f"Chunking time: {elapsed:.3f}s.")
         if self.chunked_corpus:
+            self.processed_path.mkdir(parents=True, exist_ok=True)
             start = time.perf_counter()
             self.indexer = Indexer(self.chunked_corpus, False, self.processed_path, mode)
             self.indexer.index_corpus(mode)
@@ -124,6 +125,7 @@ class RAGMachine():
         return (chunks, result)
 
     def search(self, query: str, k: int, mode: Mode = "bm25") -> MinimalSearchResults:
+        self._ensure_chunks()
         self._check_k(k)
         sources_idx = self._base_search(query, k, mode)
         sources = [self._get_minimal_source(self.chunked_corpus[i]) for i in sources_idx]
@@ -139,6 +141,7 @@ class RAGMachine():
         return result
 
     def search_dataset(self, dataset_path: str, k: int, save_directory: str, mode: Mode = "bm25") -> StudentSearchResults:
+        self._ensure_chunks()
         self._check_k(k)
         rag_dataset = load_model(dataset_path, RagDataset)
         search_results = []
@@ -172,6 +175,7 @@ class RAGMachine():
         return self.model.run(search_results, chunks)
 
     def answer(self, query: str, k: int, mode: Mode = "bm25") -> MinimalAnswer:
+        self._ensure_chunks()
         self._check_k(k)
         chunks, search_results = self._search_with_chunks(query, k, mode)
         return self._generate_answer(search_results, chunks)

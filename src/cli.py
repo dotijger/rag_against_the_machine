@@ -1,4 +1,3 @@
-import logging
 from rich.console import Console
 from rich.table import Table
 from rich import box
@@ -9,6 +8,7 @@ from src.rag import RAGMachine
 from src.error import RAGError
 from src.models import Mode, MinimalSource
 from src.log_setup import setup_logging
+
 
 class CLI():
 
@@ -24,9 +24,14 @@ class CLI():
         self.console.print("[bold italic purple]RAG INITIALIZATION...[/]")
 
     def _print_sources_table(self, sources: list[MinimalSource]) -> None:
-        table = Table(title='Retrieved sources', box=box.SIMPLE_HEAD, title_justify='center')
+        table = Table(
+                title='Retrieved sources',
+                box=box.SIMPLE_HEAD,
+                title_justify='center')
         table.add_column('#', style='yellow', justify='right')
-        table.add_column('File', style='cyan', overflow='ellipsis', no_wrap=True, max_width=50)
+        table.add_column(
+                'File', style='cyan', overflow='ellipsis',
+                no_wrap=True, max_width=50)
         table.add_column('Range', justify='right')
 
         for rank, src in enumerate(sources, 1):
@@ -40,9 +45,13 @@ class CLI():
         self.console.print(table)
 
     def _print_eval_table(self, metrics: list[tuple[int, float]]) -> None:
-        table = Table(title='Evaluation metrics', box=box.SIMPLE_HEAD, title_justify='center')
+        table = Table(
+                title='Evaluation metrics',
+                box=box.SIMPLE_HEAD,
+                title_justify='center')
         table.add_column('RECALL@K', style='yellow', justify='right')
-        table.add_column('%', style='cyan', overflow='ellipsis', no_wrap=True, max_width=50)
+        table.add_column('%', style='cyan', overflow='ellipsis',
+                         no_wrap=True, max_width=50)
 
         for k, score in metrics:
             table.add_row(
@@ -92,7 +101,7 @@ class CLI():
             title=f'Answer (k = {len(answer.retrieved_sources)})',
             border_style="bold",
             expand=False,
-            padding=(1,1)
+            padding=(1, 1),
             ))
 
     def search_dataset(
@@ -100,18 +109,20 @@ class CLI():
             dataset_path: str,
             k: int,
             save_directory: str,
-            mode: Mode = "bm25"
+            mode: Mode = "bm25",
             ) -> None:
         self._check_k(k)
         self.console.rule(f"RAG · SEARCH_DATASET · {mode.upper()}")
-        student_search_results = self.rag.search_dataset(
+        _ = self.rag.search_dataset(
                 dataset_path,
                 k,
                 save_directory,
                 mode,
                 )
         out_file = Path(save_directory) / Path(dataset_path).name
-        self.console.print(f"[bold purple]Saved student search results to: {out_file}.[/]")
+        self.console.print(
+                f"[bold purple]Saved student search results to: {out_file}.[/]"
+                )
 
     def answer_dataset(
             self,
@@ -119,16 +130,22 @@ class CLI():
             save_directory: str
             ) -> None:
         self.console.rule("RAG · ANSWER_DATASET")
-        student_search_results_answers = self.rag.answer_dataset(
+        _ = self.rag.answer_dataset(
                 student_search_results_path,
                 save_directory,
                 )
-        out_file = Path(save_directory) / Path(student_search_results_path).name
-        self.console.print(f"[bold purple]Saved student search results and answers to: {out_file}.[/]")
-    
+        out_file = (Path(save_directory) /
+                    Path(student_search_results_path).name)
+        self.console.print(
+                "[bold purple]Saved student search results"
+                f" and answers to: {out_file}.[/]"
+                )
 
-    def evaluate(self, student_search_results_path: str, dataset_path: str) -> None:
+    def evaluate(self,
+                 student_search_results_path: str,
+                 dataset_path: str) -> None:
         self.console.rule("RAG · EVALUATE")
-        evaluation_scores = self.rag.evaluate(student_search_results_path, dataset_path)
+        evaluation_scores = self.rag.evaluate(
+                student_search_results_path, dataset_path)
         metrics = evaluation_scores.metrics
         self._print_eval_table(metrics)
