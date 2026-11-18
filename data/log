@@ -1,0 +1,11 @@
+2026-11-18 11:42:12,857 [src.rag] [INFO] Chunking time: 0.4317154210002627s.
+2026-11-18 11:42:24,554 [src.rag] [INFO] Indexing time: 11.69556398199984s.
+2026-11-18 11:42:24,556 [src.cli] [CRITICAL] Unexpected error occurred: 'CLI' object has no attribute 'chunked_corpus'
+2026-11-18 11:43:32,533 [src.rag] [INFO] Chunking time: 0.21115528200061817s.
+2026-11-18 11:43:44,294 [src.rag] [INFO] Indexing time: 11.759866733999843s.
+2026-11-18 11:43:44,297 [src.cli] [CRITICAL] Unexpected error occurred: 'CLI' object has no attribute 'processed_path'
+2026-11-18 11:45:06,218 [src.rag] [INFO] Chunking time: 0.211s.
+2026-11-18 11:45:18,914 [src.rag] [INFO] Indexing time: 12.696s.
+2026-11-18 11:45:18,916 [src.cli] [CRITICAL] Unexpected error occurred: 'RAGMachine' object has no attribute 'processed_dir'
+2026-11-18 11:45:46,977 [src.rag] [INFO] Chunking time: 0.210s.
+2026-11-18 11:45:58,805 [src.rag] [INFO] Indexing time: 11.827s.

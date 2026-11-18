@@ -1,3 +1,5 @@
+import logging
+
 from src.error import RAGError
 from src.import_utils import load_model
 from src.models import (
@@ -8,6 +10,8 @@ from src.models import (
         AnsweredQuestion,
         RagDataset,
         )
+
+log = logging.getLogger(__name__)
 
 def iou(a: tuple[int, int], b: tuple[int, int]) -> float:
     inter = max(0, min(a[1], b[1]) - max(a[0], b[0]))
@@ -50,9 +54,9 @@ def run_evaluation(search_path: str, dataset_path: str) -> Evaluation:
     range_k = [1, 3, 5, 10]
     try:
         student_results = load_model(search_path, StudentSearchResults)
-        print("Student data is valid: True")
+        log.info("Student data is valid: True")
     except ImporterError as e:
-        print("Student data is valid: False")
+        log.warning("Student data is valid: False")
         raise ImporterError(e)
     true_sources = load_model(dataset_path, RagDataset)
     

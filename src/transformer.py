@@ -1,7 +1,6 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from src.models import MinimalSearchResults, MinimalAnswer, Chunk
-# from src.prompt import PromptGenerator
 
 class AnswerGenerator():
 

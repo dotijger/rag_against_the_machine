@@ -4,6 +4,8 @@ from pathlib import Path
 from pydantic import ValidationError
 import json
 import uuid
+import logging
+import time
 
 from src.chunker import Chunker
 from src.index import Indexer
@@ -26,7 +28,9 @@ from src.import_utils import load_model
 from src.evaluate import run_evaluation
 from src.transformer import AnswerGenerator
 
-class RAG():
+log = logging.getLogger(__name__)
+
+class RAGMachine():
 
     def __init__(self, raw_dir: str, processed_dir: str) -> None:
         self.raw_path = Path(raw_dir)
@@ -66,17 +70,22 @@ class RAG():
         chunker.run()
         self.chunked_corpus.extend(chunker.chunks)
     
-    def index(self, max_chunk_size: int, mode: Mode = 'bm25') -> None:
+    def index(self, max_chunk_size: int, mode: Mode = 'bm25') -> int:
         files = [p for p in self.raw_path.rglob("*") if p.is_file()]
         # print(len(files), files[:5])
+        start = time.perf_counter()
         self._chunk(max_chunk_size, self.raw_path)
+        elapsed = time.perf_counter() - start
+        log.info(f"Chunking time: {elapsed:.3f}s.")
         if self.chunked_corpus is not None:
+            start = time.perf_counter()
             self.indexer = Indexer(self.chunked_corpus, False, self.processed_path, mode)
             self.indexer.index_corpus(mode)
-            print(f"Ingestion complete! Indexed {len(self.chunked_corpus)} "
-                  f"chunks under {self.processed_path}.")
+            elapsed = time.perf_counter() - start
+            log.info(f"Indexing time: {elapsed:.3f}s.")
         else:
             raise RAGError("No corpus found to start indexing, error during chunking.")
+        return len(self.chunked_corpus)
 
     @staticmethod
     def _get_minimal_source(chunk: Chunk) -> MinimalSource:
@@ -97,6 +106,8 @@ class RAG():
                 retrieved_sources=[self._get_minimal_source(c) for c in chunks])
         return (chunks, result)
 
+
+
     def search(self, query: str, k: int, mode: Mode = "bm25") -> MinimalSearchResults:
         sources_idx = self._base_search(query, k, mode)
         sources = [self._get_minimal_source(self.chunked_corpus[i]) for i in sources_idx]
@@ -105,11 +116,17 @@ class RAG():
                 question=query,
                 retrieved_sources=sources,
                 )
+        for rank, src in enumerate(sources, 1):
+            log.debug("#%d %s [%d:%d]", rank, src.file_path,
+                      src.first_character_index,
+                      src.last_character_index)
+        self._print_sources_table(sources)
         return result
 
     def search_dataset(self, dataset_path: str, k: int, save_directory: str, mode: Mode = "bm25") -> StudentSearchResults:
         rag_dataset = load_model(dataset_path, RagDataset)
         search_results = []
+        start = time.perf_counter()
         for i in tqdm(range(len(rag_dataset.rag_questions))):
             question = rag_dataset.rag_questions[i]
             sources_idx = self._base_search(question.question, k, mode)
@@ -119,6 +136,8 @@ class RAG():
                         question=question.question,
                         retrieved_sources=[self._get_minimal_source(self.chunked_corpus[i]) for i in sources_idx]
                     ))
+        elapsed = time.perf_counter() - start
+        log.info(f"Retrieval throughput {elapsed}s for {len(rag_dataset.rag_questions)} questions.")
         student_search_results = StudentSearchResults(search_results=search_results,k=k)
         try:
             output_dir = Path(save_directory)
@@ -126,7 +145,6 @@ class RAG():
             out_file = output_dir / Path(dataset_path).name
             with open(out_file, 'w', encoding='utf-8') as f:
                 f.write(student_search_results.model_dump_json(indent=2) + '\n')
-            print(f"Saved student_search_results to {out_file}")
         except OSError as e:
             raise RAGError(f"Could not write search results to {save_directory}: {e}") from e
         return student_search_results
@@ -165,7 +183,6 @@ class RAG():
             out_file = output_dir / Path(student_search_results_path).name
             with open(out_file, 'w', encoding='utf-8') as f:
                 f.write(search_results_answer.model_dump_json(indent=2) + '\n')
-            print(f"Saved student_search_results_and_answer to {out_file}")
         except OSError as e:
             raise RAGError(f"Could not write search and answer results to {save_directory}: {e}") from e
         return search_results_answer

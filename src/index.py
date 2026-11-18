@@ -5,12 +5,15 @@ from tqdm import tqdm
 from sentence_transformers import SentenceTransformer
 import json
 import numpy as np
+import logging
 
 from src.chunker import Chunker
 from src.models import Chunk, Mode
 from src.tokenizer import tokenize
 from src.hybrid_retrieval import rff
 from src.error import RAGError
+
+log = logging.getLogger(__name__)
 
 class Indexer():
     

@@ -5,9 +5,12 @@ from pydantic import BaseModel, model_validator, ValidationError
 from typing import Self
 from pathlib import Path
 import re
+import logging
 
 from src.error import ChunkError
 from src.models import MinimalSource, Chunk
+
+log = logging.getLogger(__name__)
 
 class Chunker():
     SUPPORTED = ['.txt', '.md', '.py']
@@ -41,9 +44,8 @@ class Chunker():
     
     def run(self) -> None:
         if self.path.suffix not in self.SUPPORTED:
-            print("File type not supported, skipping file")
+            log.warning(f"Skipping '{self.path}', file type not supported.")
             return
-            # raise ChunkError("File type not supported by chunking methods, skipping file.")
         self._read_source()
         if len(self.body) == 0:
             return
@@ -52,7 +54,6 @@ class Chunker():
         elif self.path.suffix == '.md':
             self._md()
         elif self.path.suffix == '.py':
-            # print(f"running {self.path=}")
             self._py()
 
     def _py(self) -> None:

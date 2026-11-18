@@ -1,24 +1,89 @@
-from pathlib import Path
+import logging
+from rich.console import Console
+from rich.table import Table
+from rich import box
+from rich.panel import Panel
 
-from src.rag import RAG
+from src.rag import RAGMachine
 from src.error import RAGError
-from src.models import Mode
-from src.logging import RAGLogger
+from src.models import Mode, MinimalSource
+from src.log_setup import setup_logging
 
 class CLI():
 
-    def __init__(self, raw_dir: str = 'data/raw', processed_dir: str = 'data/processed') -> None:
-        self.log = logger.getLogger(__name__)
-        self.rag = Rag(raw_dir, processed_dir)
+    def __init__(self,
+                 raw_dir: str = 'data/raw',
+                 processed_dir: str = 'data/processed',
+                 log_level: str = 'warning',
+                 file_path: str | None = None,
+                 ) -> None:
+        self.rag = RAGMachine(raw_dir, processed_dir)
+        setup_logging()
+        self.console = Console()
+        self.console.print("[bold italic purple]RAG INITIALIZATION...[/]")
+
+    def _print_sources_table(self, sources: list[MinimalSource]) -> None:
+        table = Table(title='Retrieved sources', box=box.SIMPLE_HEAD, title_justify='center')
+        table.add_column('#', style='yellow', justify='right')
+        table.add_column('File', style='cyan', overflow='ellipsis', no_wrap=True, max_width=50)
+        table.add_colum('Range', justify='right')
+
+        for rank, src in enumerate(sources, 1):
+            table.add_row(
+                    str(rank),
+                    src.file_path,
+                    f"{src.first_character_index:,} - "
+                    f"{src.last_character_index}",
+                    )
+
+        self.console.print(table)
+
+    def _print_eval_table(self, metrics: list[tuple[int, float]], code: bool) -> None:
+        table = Table(title='Evaluation metrics', box=box.SIMPLE_HEAD, title_justify='center')
+        table.add_column('RECALL@K', style='yellow', justify='right')
+        table.add_column('%', style='cyan', overflow='ellipsis', no_wrap=True, max_width=50)
+
+        for k, score in metrics:
+            table.add_row(
+                    str(k),
+                    f"{score:.3f}")
+
+        self.console.print(table)
 
     def index(self, max_chunk_size: int, mode: Mode = 'bm25') -> None:
-        self.rag.index(max_chunk_size, mode)
+        self.console.print(
+                f"Initializing indexing using [bold]{mode}[/] with a maximum chunk size"
+                f"of [bold]{max_chunk_size}[/]")
+        chunks = self.rag.index(max_chunk_size, mode)
+        self.console.print(
+                f"[green]Ingestion complete! Indexed [bold italic]{chunks}[/]"
+                f" chunks under {self.rag.processed_path}[/].")
 
     def search(self, query: str, k: int, mode: Mode = 'bm25') -> None:
+        self.console.print(Panel(
+            query,
+            title='Question',
+            border_style="bold",
+            expand=False,
+            ))
         search_results = self.rag.search(query, k, mode)
+        self._print_sources_table(search_results.retrieved_sources)
 
     def answer(self, query: str, k: int, mode: Mode = 'bm25') -> None:
+        self.console.print(Panel(
+            query,
+            title='Question',
+            border_style="bold",
+            expand=False,
+            ))
         answer = self.rag.answer(query, k, mode)
+        self.console.print(Panel(
+            answer.answer,
+            title=f'Answer (k = {len(answer.retrieved_sources)})',
+            border_style="bold",
+            expand=False,
+            padding=(1,1)
+            ))
 
     def search_dataset(
             self,
@@ -33,6 +98,8 @@ class CLI():
                 save_directory,
                 mode,
                 )
+        out_file = Path(save_directory) / Path(dataset_path).name
+        self.console.print(f"[bold purple]Saved student search results to: {out_file}.[/]")
 
     def answer_dataset(
             self,
@@ -43,10 +110,11 @@ class CLI():
                 student_search_results_path,
                 save_directory,
                 )
+        out_file = Path(save_directory) / Path(dataset_path).name
+        self.console.print(f"[bold purple]Saved student search results and answers to: {out_file}.[/]")
+    
 
     def evaluate(student_search_results_path: str, dataset_path: str) -> None:
         evaluation_scores = self.rag.evaluate(student_search_results_path, dataset_path)
         metrics = evaluation_scores.metrics
-        print("Evaluation Results\n========================================")
-        for metric in metrics:
-            print(f"Recall@{metric[0]}: {metric[1]:.3f} ", end="")
+        self._print_eval_table(metrics)
