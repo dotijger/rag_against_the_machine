@@ -19,6 +19,7 @@ debug:
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	rm -rf .mypy_cache
+	rm data/log
 
 lint:
 	uv run flake8 $(src_dir)

@@ -19,10 +19,11 @@ class Indexer():
     
     def __init__(self, corpus: list[Chunk], loaded: bool, output_path: Path, mode: Mode) -> None:
         self.corpus = corpus
-        self.minilm_retriever = SentenceTransformer(
-                'sentence-transformers/all-MiniLM-L6-v2',
-                device='cpu',
-                )
+        if mode != 'bm25':
+            self.minilm_retriever = SentenceTransformer(
+                    'sentence-transformers/all-MiniLM-L6-v2',
+                    device='cpu',
+                    )
         if not loaded:
             self.bm25s_retriever = bm25s.BM25()
         else:

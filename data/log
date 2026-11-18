@@ -9,3 +9,46 @@
 2026-11-18 11:45:18,916 [src.cli] [CRITICAL] Unexpected error occurred: 'RAGMachine' object has no attribute 'processed_dir'
 2026-11-18 11:45:46,977 [src.rag] [INFO] Chunking time: 0.210s.
 2026-11-18 11:45:58,805 [src.rag] [INFO] Indexing time: 11.827s.
+2026-11-18 11:52:10,290 [src.rag] [INFO] Chunking time: 0.233s.
+2026-11-18 11:52:22,494 [src.rag] [INFO] Indexing time: 12.203s.
+2026-11-18 11:54:00,644 [src.rag] [INFO] Chunking time: 0.210s.
+2026-11-18 11:54:12,137 [src.rag] [INFO] Indexing time: 11.492s.
+2026-11-18 11:54:27,485 [src.rag] [DEBUG] #1 data/raw/vllm-0.10.1/benchmarks/sonnet.txt [14000:16000]
+2026-11-18 11:54:27,485 [src.rag] [DEBUG] #2 data/raw/vllm-0.10.1/docs/models/extensions/tensorizer.md [1040:2690]
+2026-11-18 11:54:27,485 [src.rag] [DEBUG] #3 data/raw/vllm-0.10.1/benchmarks/sonnet.txt [16000:18000]
+2026-11-18 11:54:27,485 [src.rag] [DEBUG] #4 data/raw/vllm-0.10.1/docs/deployment/frameworks/cerebrium.md [1985:3333]
+2026-11-18 11:54:27,485 [src.rag] [DEBUG] #5 data/raw/vllm-0.10.1/benchmarks/sonnet.txt [8000:10000]
+2026-11-18 11:54:27,485 [src.rag] [DEBUG] #6 data/raw/vllm-0.10.1/benchmarks/sonnet.txt [18000:20000]
+2026-11-18 11:54:27,485 [src.rag] [DEBUG] #7 data/raw/vllm-0.10.1/benchmarks/sonnet.txt [0:2000]
+2026-11-18 11:54:27,485 [src.rag] [DEBUG] #8 data/raw/vllm-0.10.1/tests/reasoning/test_granite_reasoning_parser.py [5385:7378]
+2026-11-18 11:54:27,485 [src.rag] [DEBUG] #9 data/raw/vllm-0.10.1/examples/others/tensorize_vllm_model.py [4459:6384]
+2026-11-18 11:54:27,485 [src.rag] [DEBUG] #10 data/raw/vllm-0.10.1/tests/plugins/vllm_add_dummy_model/vllm_add_dummy_model/__init__.py [0:826]
+2026-11-18 11:54:27,485 [src.cli] [CRITICAL] Unexpected error occurred: 'RAGMachine' object has no attribute '_print_sources_table'
+2026-11-18 11:54:46,811 [src.rag] [DEBUG] #1 data/raw/vllm-0.10.1/benchmarks/sonnet.txt [14000:16000]
+2026-11-18 11:54:46,811 [src.rag] [DEBUG] #2 data/raw/vllm-0.10.1/docs/models/extensions/tensorizer.md [1040:2690]
+2026-11-18 11:54:46,811 [src.rag] [DEBUG] #3 data/raw/vllm-0.10.1/benchmarks/sonnet.txt [16000:18000]
+2026-11-18 11:54:46,811 [src.rag] [DEBUG] #4 data/raw/vllm-0.10.1/docs/deployment/frameworks/cerebrium.md [1985:3333]
+2026-11-18 11:54:46,811 [src.rag] [DEBUG] #5 data/raw/vllm-0.10.1/benchmarks/sonnet.txt [8000:10000]
+2026-11-18 11:54:46,811 [src.rag] [DEBUG] #6 data/raw/vllm-0.10.1/benchmarks/sonnet.txt [18000:20000]
+2026-11-18 11:54:46,811 [src.rag] [DEBUG] #7 data/raw/vllm-0.10.1/benchmarks/sonnet.txt [0:2000]
+2026-11-18 11:54:46,811 [src.rag] [DEBUG] #8 data/raw/vllm-0.10.1/tests/reasoning/test_granite_reasoning_parser.py [5385:7378]
+2026-11-18 11:54:46,811 [src.rag] [DEBUG] #9 data/raw/vllm-0.10.1/examples/others/tensorize_vllm_model.py [4459:6384]
+2026-11-18 11:54:46,811 [src.rag] [DEBUG] #10 data/raw/vllm-0.10.1/tests/plugins/vllm_add_dummy_model/vllm_add_dummy_model/__init__.py [0:826]
+2026-11-18 11:54:46,811 [src.cli] [CRITICAL] Unexpected error occurred: 'Table' object has no attribute 'add_colum'
+2026-11-18 11:55:02,522 [src.rag] [DEBUG] #1 data/raw/vllm-0.10.1/benchmarks/sonnet.txt [14000:16000]
+2026-11-18 11:55:02,522 [src.rag] [DEBUG] #2 data/raw/vllm-0.10.1/docs/models/extensions/tensorizer.md [1040:2690]
+2026-11-18 11:55:02,522 [src.rag] [DEBUG] #3 data/raw/vllm-0.10.1/benchmarks/sonnet.txt [16000:18000]
+2026-11-18 11:55:02,522 [src.rag] [DEBUG] #4 data/raw/vllm-0.10.1/docs/deployment/frameworks/cerebrium.md [1985:3333]
+2026-11-18 11:55:02,522 [src.rag] [DEBUG] #5 data/raw/vllm-0.10.1/benchmarks/sonnet.txt [8000:10000]
+2026-11-18 11:55:02,522 [src.rag] [DEBUG] #6 data/raw/vllm-0.10.1/benchmarks/sonnet.txt [18000:20000]
+2026-11-18 11:55:02,522 [src.rag] [DEBUG] #7 data/raw/vllm-0.10.1/benchmarks/sonnet.txt [0:2000]
+2026-11-18 11:55:02,522 [src.rag] [DEBUG] #8 data/raw/vllm-0.10.1/tests/reasoning/test_granite_reasoning_parser.py [5385:7378]
+2026-11-18 11:55:02,522 [src.rag] [DEBUG] #9 data/raw/vllm-0.10.1/examples/others/tensorize_vllm_model.py [4459:6384]
+2026-11-18 11:55:02,522 [src.rag] [DEBUG] #10 data/raw/vllm-0.10.1/tests/plugins/vllm_add_dummy_model/vllm_add_dummy_model/__init__.py [0:826]
+2026-11-18 11:55:36,643 [src.rag] [INFO] Retrieval throughput 0.26559729800010246s for 99 questions.
+2026-11-18 11:55:36,646 [src.cli] [CRITICAL] Unexpected error occurred: name 'Path' is not defined
+2026-11-18 11:56:30,722 [src.rag] [INFO] Retrieval throughput 0.24191095800051698s for 99 questions.
+2026-11-18 11:56:54,470 [src.cli] [CRITICAL] Unexpected error occurred: name 'self' is not defined
+2026-11-18 11:57:21,752 [src.evaluate] [INFO] Student data is valid: True
+2026-11-18 11:57:21,754 [src.cli] [CRITICAL] Unexpected error occurred: CLI._print_eval_table() missing 1 required positional argument: 'code'
+2026-11-18 11:57:45,362 [src.evaluate] [INFO] Student data is valid: True

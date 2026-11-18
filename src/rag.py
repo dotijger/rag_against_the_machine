@@ -120,7 +120,6 @@ class RAGMachine():
             log.debug("#%d %s [%d:%d]", rank, src.file_path,
                       src.first_character_index,
                       src.last_character_index)
-        self._print_sources_table(sources)
         return result
 
     def search_dataset(self, dataset_path: str, k: int, save_directory: str, mode: Mode = "bm25") -> StudentSearchResults:

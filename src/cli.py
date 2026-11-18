@@ -3,6 +3,7 @@ from rich.console import Console
 from rich.table import Table
 from rich import box
 from rich.panel import Panel
+from pathlib import Path
 
 from src.rag import RAGMachine
 from src.error import RAGError
@@ -26,7 +27,7 @@ class CLI():
         table = Table(title='Retrieved sources', box=box.SIMPLE_HEAD, title_justify='center')
         table.add_column('#', style='yellow', justify='right')
         table.add_column('File', style='cyan', overflow='ellipsis', no_wrap=True, max_width=50)
-        table.add_colum('Range', justify='right')
+        table.add_column('Range', justify='right')
 
         for rank, src in enumerate(sources, 1):
             table.add_row(
@@ -38,7 +39,7 @@ class CLI():
 
         self.console.print(table)
 
-    def _print_eval_table(self, metrics: list[tuple[int, float]], code: bool) -> None:
+    def _print_eval_table(self, metrics: list[tuple[int, float]]) -> None:
         table = Table(title='Evaluation metrics', box=box.SIMPLE_HEAD, title_justify='center')
         table.add_column('RECALL@K', style='yellow', justify='right')
         table.add_column('%', style='cyan', overflow='ellipsis', no_wrap=True, max_width=50)
@@ -51,15 +52,14 @@ class CLI():
         self.console.print(table)
 
     def index(self, max_chunk_size: int, mode: Mode = 'bm25') -> None:
-        self.console.print(
-                f"Initializing indexing using [bold]{mode}[/] with a maximum chunk size"
-                f"of [bold]{max_chunk_size}[/]")
+        self.console.rule(f"RAG · INDEX · {mode.upper()} · {max_chunk_size}")
         chunks = self.rag.index(max_chunk_size, mode)
         self.console.print(
                 f"[green]Ingestion complete! Indexed [bold italic]{chunks}[/]"
                 f" chunks under {self.rag.processed_path}[/].")
 
     def search(self, query: str, k: int, mode: Mode = 'bm25') -> None:
+        self.console.rule(f"RAG · SEARCH · {mode.upper()}")
         self.console.print(Panel(
             query,
             title='Question',
@@ -70,6 +70,7 @@ class CLI():
         self._print_sources_table(search_results.retrieved_sources)
 
     def answer(self, query: str, k: int, mode: Mode = 'bm25') -> None:
+        self.console.rule(f"RAG · ANSWER · {mode.upper()}")
         self.console.print(Panel(
             query,
             title='Question',
@@ -77,6 +78,7 @@ class CLI():
             expand=False,
             ))
         answer = self.rag.answer(query, k, mode)
+        self._print_sources_table(answer.retrieved_sources)
         self.console.print(Panel(
             answer.answer,
             title=f'Answer (k = {len(answer.retrieved_sources)})',
@@ -92,6 +94,7 @@ class CLI():
             save_directory: str,
             mode: Mode = "bm25"
             ) -> None:
+        self.console.rule(f"RAG · SEARCH_DATASET · {mode.upper()}")
         student_search_results = self.rag.search_dataset(
                 dataset_path,
                 k,
@@ -106,6 +109,7 @@ class CLI():
             student_search_results_path: str,
             save_directory: str
             ) -> None:
+        self.console.rule("RAG · ANSWER_DATASET")
         student_search_results_answers = self.rag.answer_dataset(
                 student_search_results_path,
                 save_directory,
@@ -114,7 +118,8 @@ class CLI():
         self.console.print(f"[bold purple]Saved student search results and answers to: {out_file}.[/]")
     
 
-    def evaluate(student_search_results_path: str, dataset_path: str) -> None:
+    def evaluate(self, student_search_results_path: str, dataset_path: str) -> None:
+        self.console.rule("RAG · EVALUATE")
         evaluation_scores = self.rag.evaluate(student_search_results_path, dataset_path)
         metrics = evaluation_scores.metrics
         self._print_eval_table(metrics)
