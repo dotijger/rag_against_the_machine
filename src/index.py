@@ -10,8 +10,8 @@ import logging
 from src.chunker import Chunker
 from src.models import Chunk, Mode
 from src.tokenizer import tokenize
-from src.hybrid_retrieval import rff
-from src.error import RAGError
+from src.hybrid_retrieval import rrf
+from src.error import IndexerError
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +29,10 @@ class Indexer():
         else:
             self.bm25s_retriever = bm25s.BM25.load(output_path / 'bm25s')
             if mode == 'semantic' or mode == 'hybrid':
-                self.minilm_embeddings = np.load(output_path / 'embeddings.npy')
+                try:
+                    self.minilm_embeddings = np.load(output_path / 'embeddings.npy')
+                except OSError as e:
+                    raise IndexerError(f"{e}") from e
         self.output_path = output_path
 
     def _save_chunk_lib(self) -> None:
@@ -40,7 +43,7 @@ class Indexer():
     def index_corpus(self, mode: Mode) -> None:
         modes = ['semantic', 'hybrid', 'bm25']
         if mode not in modes:
-            raise RAGError(f"Unknown mode {mode}, choose from: bm25, semantic, hybrid")
+            raise IndexerError(f"Unknown mode {mode}, choose from: bm25, semantic, hybrid")
         
         corpus_tokens = [tokenize(c.text) for c in tqdm(self.corpus, desc="Tokenizing corpus...")]
 
@@ -61,25 +64,26 @@ class Indexer():
         self._save_chunk_lib()
 
     def _get_fetchk_idx(self, k: int, query: str, retriever: str) -> list[int]:
-        if retriever == 'b':
+        if retriever == 'bm25':
             ids, scores = self.bm25s_retriever.retrieve([tokenize(query)], k=k)
             return [int(i) for i in ids[0]]
-        else:
+        if retriever == 'semantic':
             query_tensor = self.minilm_retriever.encode(query, normalize_embeddings=True)
             scores = self.minilm_embeddings @ query_tensor
             top = np.argpartition(-scores, k)[:k]
             top = top[np.argsort(-scores[top])]
             return [int(i) for i in top]
+        raise IndexerError(f"Unknown mode {retriever}, choose from: bm25, semantic, hybrid")
 
     def get_ktop_idx(self, query: str, k: int, mode: Mode) -> list[int]:
         if mode == 'bm25':
-            return self._get_fetchk_idx(k, query, 'b')
+            return self._get_fetchk_idx(k, query, 'bm25')
         if mode == 'semantic':
-            return self._get_fetchk_idx(k, query, 's')
+            return self._get_fetchk_idx(k, query, 'semantic')
         if mode == 'hybrid':
             fetch_k = 60
-            bm25_ranks = self._get_fetchk_idx(fetch_k, query, 'b')
-            semantic_ranks = self._get_fetchk_idx(fetch_k, query, 's')
-            return (rff(fetch_k, bm25_ranks, semantic_ranks)[:k])
-        raise RAGError(f"Unknown mode {mode}, choose from: bm25, semantic, hybrid")
+            bm25_ranks = self._get_fetchk_idx(fetch_k, query, 'bm25')
+            semantic_ranks = self._get_fetchk_idx(fetch_k, query, 'semantic')
+            return (rrf(fetch_k, bm25_ranks, semantic_ranks)[:k])
+        raise IndexerError(f"Unknown mode {mode}, choose from: bm25, semantic, hybrid")
 

@@ -39,23 +39,41 @@ class RAGMachine():
         self.chunked_corpus: list[Chunk] = []
         self.chunk_by_source: dict[SourceKey, Chunk] = {}
         self.supported: list[str] = ['.md', '.py', '.txt']
+        self.model: AnswerGenerator | None = None
 
-    def _ensure_index(self, mode) -> Indexer:
-        if self.indexer:
-            return self.indexer
+    def _check_k(self, k: int) -> None:
+        if k > len(self.chunked_corpus):
+            raise RAGError(
+                    "Parameter k cannot be larger than"
+                    " the amount of chunks in the source corpus.")
+    
+    def _ensure_chunks(self) -> list[Chunk]:
+        if self.chunked_corpus:
+            return self.chunked_corpus
         chunks_file = self.processed_path / 'chunks.jsonl'
         if not chunks_file.is_file():
             raise RAGError("Index needs to run before calling any other RAG methods.\n"
                            "First run: `uv run python3 -m src index --max_chunk_size <int>`")
         try:
             with open(chunks_file, encoding='utf-8') as f:
-                chunks = [Chunk.model_validate_json(line) for line in f if line.strip()]
+                self.chunked_corpus = [
+                    Chunk.model_validate_json(line) for line in f if line.strip()
+                ]
         except ValidationError as e:
-            raise RAGError("Corrupted chunks.jsonl file, rebuild index first by running:\n"
-                           "`uv run python3 -m src index --max_chunk_size <int?`")
-        self.indexer = Indexer(corpus=chunks, loaded=True, output_path=self.processed_path, mode=mode)
-        self.chunked_corpus = chunks
-        self.chunk_by_source = {(c.file_path, c.first_character_index, c.last_character_index): c for c in self.chunked_corpus}
+            raise RAGError("Corrupted chunks.jsonl, rebuild the index.") from e
+        self.chunk_by_source = {
+                (c.file_path, c.first_character_index, c.last_character_index): c
+                for c in self.chunked_corpus
+                }
+        return self.chunked_corpus
+    
+    def _ensure_index(self, mode) -> Indexer:
+        if self.indexer:
+            return self.indexer
+        chunks = self._ensure_chunks()
+        self.indexer = Indexer(
+                corpus=chunks, loaded=True,
+                output_path=self.processed_path, mode=mode)
         return self.indexer
     
     def _chunk(self, max_chunk_size: int, path: Path) -> None:
@@ -72,12 +90,11 @@ class RAGMachine():
     
     def index(self, max_chunk_size: int, mode: Mode = 'bm25') -> int:
         files = [p for p in self.raw_path.rglob("*") if p.is_file()]
-        # print(len(files), files[:5])
         start = time.perf_counter()
         self._chunk(max_chunk_size, self.raw_path)
         elapsed = time.perf_counter() - start
         log.info(f"Chunking time: {elapsed:.3f}s.")
-        if self.chunked_corpus is not None:
+        if self.chunked_corpus:
             start = time.perf_counter()
             self.indexer = Indexer(self.chunked_corpus, False, self.processed_path, mode)
             self.indexer.index_corpus(mode)
@@ -106,9 +123,8 @@ class RAGMachine():
                 retrieved_sources=[self._get_minimal_source(c) for c in chunks])
         return (chunks, result)
 
-
-
     def search(self, query: str, k: int, mode: Mode = "bm25") -> MinimalSearchResults:
+        self._check_k(k)
         sources_idx = self._base_search(query, k, mode)
         sources = [self._get_minimal_source(self.chunked_corpus[i]) for i in sources_idx]
         result = MinimalSearchResults(
@@ -123,6 +139,7 @@ class RAGMachine():
         return result
 
     def search_dataset(self, dataset_path: str, k: int, save_directory: str, mode: Mode = "bm25") -> StudentSearchResults:
+        self._check_k(k)
         rag_dataset = load_model(dataset_path, RagDataset)
         search_results = []
         start = time.perf_counter()
@@ -149,22 +166,28 @@ class RAGMachine():
         return student_search_results
 
     def _generate_answer(self, search_results: MinimalSearchResults, chunks: list[Chunk]) -> MinimalAnswer:
-        model = AnswerGenerator()
-        return model.run(search_results, chunks)
+        if self.model:
+            return self.model.run(search_results, chunks)
+        self.model = AnswerGenerator()
+        return self.model.run(search_results, chunks)
 
-    def answer(self, query: str, k: int, mode: Mode = "bm25s") -> MinimalAnswer:
+    def answer(self, query: str, k: int, mode: Mode = "bm25") -> MinimalAnswer:
+        self._check_k(k)
         chunks, search_results = self._search_with_chunks(query, k, mode)
         return self._generate_answer(search_results, chunks)
 
     def _get_chunks_from_sources(self, sources: list[MinimalSource]) -> list[Chunk]:
         def _key(src: MinimalSource) -> SourceKey:
             return (src.file_path, src.first_character_index, src.last_character_index)
-        self._ensure_index(mode)
-        return [self.chunk_by_source[_key(s)] for s in sources]
+        self._ensure_chunks()
+        try:
+            return [self.chunk_by_source[_key(s)] for s in sources]
+        except KeyError as e:
+            raise RAGError(f"Search results do not match current index, re-run 'search_dataset': {e}")
 
     def _answer_from_search_results(self, query: str, search_results: MinimalSearchResults) -> MinimalAnswer:
         chunks = self._get_chunks_from_sources(search_results.retrieved_sources)
-        return self._generate_answer(search_results, chunks, mode)
+        return self._generate_answer(search_results, chunks)
     
     def answer_dataset(self, student_search_results_path: str, save_directory: str) -> StudentSearchResultsAndAnswer:
         list_of_answers = []

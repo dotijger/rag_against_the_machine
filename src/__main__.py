@@ -3,19 +3,15 @@ import fire
 import logging
 
 from src.cli import CLI
-from src.error import (
-        RAGError,
-        IndexError,
-        ChunkError,
-        ImporterError,
-        )
+from src.error import RAGError
 
 log = logging.getLogger("src.cli")
+
 
 def main() -> int:
     try:
         fire.Fire(CLI)
-    except (RAGError, IndexError, ChunkError, ImporterError) as e:
+    except RAGError as e:
         log.error(e)
         return 1
     except KeyboardInterrupt:
@@ -26,6 +22,6 @@ def main() -> int:
         return 1
     return 0
 
+
 if __name__ == "__main__":
     sys.exit(main())
-

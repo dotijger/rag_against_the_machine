@@ -1,6 +1,6 @@
 import logging
 
-from src.error import RAGError
+from src.error import RAGError, ImporterError
 from src.import_utils import load_model
 from src.models import (
         StudentSearchResults,
@@ -36,8 +36,10 @@ def get_recall_score(retrieved: list[MinimalSource], references: list[MinimalSou
             if matching_sources(source, reference):
                 references_matched += 1
                 break
-
-    return references_matched / len(references)
+    if references:
+        return references_matched / len(references)
+    else:
+        return 0.0
 
 def get_recall_k(k: int, student_results: dict[str, list[MinimalSource]], rag_questions: list[AnsweredQuestion]) -> float:
     scores = 0.0
@@ -45,7 +47,7 @@ def get_recall_k(k: int, student_results: dict[str, list[MinimalSource]], rag_qu
         question_id, references = question.question_id, question.sources
         retrieved = student_results.get(question_id)
         if not retrieved:
-            raise RAGError(f"No student search results for {question_id} in evaluation.")
+            score = 0.0
         score = get_recall_score(retrieved[:k], references)
         scores += score
     return (scores / len(rag_questions))
@@ -58,7 +60,7 @@ def run_evaluation(search_path: str, dataset_path: str) -> Evaluation:
     except ImporterError as e:
         log.warning("Student data is valid: False")
         raise ImporterError(e)
-    true_sources = load_model(dataset_path, RagDataset)
+    true_sources = load_model(dataset_path, AnsweredRagDataset)
     
     metrics = []
     student_k = student_results.k
@@ -73,23 +75,3 @@ def run_evaluation(search_path: str, dataset_path: str) -> Evaluation:
         k=student_k,
         count=len(true_sources.rag_questions)
         )
-
-
-# for historical purposes, scrapped:
-
-def extract_student_search_results(path: str) -> StudentSearchResults:
-    data = json_load(Path(path))
-    try:
-        search_dataset = StudentSearchResults.model_validate_json(Path(path).read_text(encoding='utf-8'))
-    except ValidationError as e:
-        raise RAGError(f"{path} does not have a valid Student Search Results structure.")
-    if not isinstance(data['k'], int):
-        raise ValueError(f"k has to be an positive integer, now {data['k']}")
-    if data.get('k') <= 0:
-        raise ValueError(f"k has to be a positive integer, now {data['k']}")
-    if len(data.get('search_results')) == 0:
-        raise RAGError('Search results are empty, nothing to evaluate.')
-    return StudentSearchResults(
-            search_results=data['search_results'],
-            k=data['k']
-            )

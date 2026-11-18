@@ -51,7 +51,13 @@ class CLI():
 
         self.console.print(table)
 
+    def _check_k(self, k: int) -> None:
+        if k <= 0:
+            raise RAGError("Parameter k has to be a positive integer.")
+
     def index(self, max_chunk_size: int, mode: Mode = 'bm25') -> None:
+        if max_chunk_size <= 0:
+            raise RAGError("Max chunk size has to be a positive integer.")
         self.console.rule(f"RAG · INDEX · {mode.upper()} · {max_chunk_size}")
         chunks = self.rag.index(max_chunk_size, mode)
         self.console.print(
@@ -59,6 +65,7 @@ class CLI():
                 f" chunks under {self.rag.processed_path}[/].")
 
     def search(self, query: str, k: int, mode: Mode = 'bm25') -> None:
+        self._check_k(k)
         self.console.rule(f"RAG · SEARCH · {mode.upper()}")
         self.console.print(Panel(
             query,
@@ -70,6 +77,7 @@ class CLI():
         self._print_sources_table(search_results.retrieved_sources)
 
     def answer(self, query: str, k: int, mode: Mode = 'bm25') -> None:
+        self._check_k(k)
         self.console.rule(f"RAG · ANSWER · {mode.upper()}")
         self.console.print(Panel(
             query,
@@ -94,6 +102,7 @@ class CLI():
             save_directory: str,
             mode: Mode = "bm25"
             ) -> None:
+        self._check_k(k)
         self.console.rule(f"RAG · SEARCH_DATASET · {mode.upper()}")
         student_search_results = self.rag.search_dataset(
                 dataset_path,
@@ -114,7 +123,7 @@ class CLI():
                 student_search_results_path,
                 save_directory,
                 )
-        out_file = Path(save_directory) / Path(dataset_path).name
+        out_file = Path(save_directory) / Path(student_search_results_path).name
         self.console.print(f"[bold purple]Saved student search results and answers to: {out_file}.[/]")
     
 

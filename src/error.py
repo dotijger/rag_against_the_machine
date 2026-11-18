@@ -1,11 +1,11 @@
-class ImporterError(BaseException):
+class ImporterError(RAGError):
     pass
 
-class ChunkError(BaseException):
+class ChunkError(RAGError):
     pass
 
-class IndexError(BaseException):
+class IndexingError(RAGError):
     pass
 
-class RAGError(BaseException):
+class RAGError(Exception):
     pass

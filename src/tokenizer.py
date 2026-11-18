@@ -14,5 +14,5 @@ def tokenize(text: str) -> list[str]:
         tokens.extend(parts)
         if len(parts) > 1:
             tokens.append(w.lower())
-        tokens = [t for t in tokens if len(t) > 1 and t not in stop]
+    tokens = [t for t in tokens if len(t) > 1 and t not in stop]
     return stemmer.stemWords(tokens)

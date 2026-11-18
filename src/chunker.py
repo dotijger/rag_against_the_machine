@@ -1,22 +1,22 @@
 # chunking strategies for 1 python code chunking (.py) and 2 markdown / text chunking (.txt, .md)
 # use of TD-IDF -> BM25 lexical retieving methods
 
-from pydantic import BaseModel, model_validator, ValidationError
-from typing import Self
+from pydantic import ValidationError
 from pathlib import Path
 import re
 import logging
 
 from src.error import ChunkError
-from src.models import MinimalSource, Chunk
+from src.models import Chunk
 
 log = logging.getLogger(__name__)
+
 
 class Chunker():
     SUPPORTED = ['.txt', '.md', '.py']
 
-    def __init__(self, path: str, max_chunk_size: int = 1500) -> None:
-        self.path = Path(path)
+    def __init__(self, path: Path, max_chunk_size: int = 1500) -> None:
+        self.path = path
         self.max_chunk_size = max_chunk_size
         self.chunks: list[Chunk] = []
         self.body: str = ""
@@ -40,7 +40,7 @@ class Chunker():
                             last_character_index=min(idx + step, stop),                          
                             text=self.body[idx:idx+step]))
             except ValidationError as e:
-                raise ValueError(e)
+                raise ChunkError(e)
     
     def run(self) -> None:
         if self.path.suffix not in self.SUPPORTED:
@@ -59,7 +59,7 @@ class Chunker():
     def _py(self) -> None:
         starters = ('def', 'async def', 'class', '@')
         lines = self.body.split('\n')
-        cuts = []
+        cuts: list[int] = []
         offset = 0
         previous = ""
         for line in lines:
