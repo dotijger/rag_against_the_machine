@@ -23,3 +23,11 @@ dependencies = [
 [tool.mypy]
 mypy_path = "."
 explicit_package_bases = true
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.6",
+]
+
+[tool.ruff]
+line-length = 79

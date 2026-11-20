@@ -14,8 +14,8 @@ from src.models import Chunk
 log = logging.getLogger(__name__)
 
 
-class Chunker():
-    SUPPORTED = ['.txt', '.md', '.py']
+class Chunker:
+    SUPPORTED = [".txt", ".md", ".py"]
 
     def __init__(self, path: Path, max_chunk_size: int = 1500) -> None:
         self.path = path
@@ -36,11 +36,14 @@ class Chunker():
             stop = len(self.body)
         for idx in range(start, stop, step):
             try:
-                self.chunks.append(Chunk(
-                            file_path=str(self.path),
-                            first_character_index=idx,
-                            last_character_index=min(idx + step, stop),
-                            text=self.body[idx:idx+step]))
+                self.chunks.append(
+                    Chunk(
+                        file_path=str(self.path),
+                        first_character_index=idx,
+                        last_character_index=min(idx + step, stop),
+                        text=self.body[idx: idx + step],
+                    )
+                )
             except ValidationError as e:
                 raise ChunkError(e)
 
@@ -51,16 +54,16 @@ class Chunker():
         self._read_source()
         if len(self.body) == 0:
             return
-        if self.path.suffix == '.txt':
+        if self.path.suffix == ".txt":
             self._window_chunker()
-        elif self.path.suffix == '.md':
+        elif self.path.suffix == ".md":
             self._md()
-        elif self.path.suffix == '.py':
+        elif self.path.suffix == ".py":
             self._py()
 
     def _py(self) -> None:
-        starters = ('def', 'async def', 'class', '@')
-        lines = self.body.split('\n')
+        starters = ("def", "async def", "class", "@")
+        lines = self.body.split("\n")
         cuts: list[int] = []
         offset = 0
         previous = ""
@@ -80,8 +83,8 @@ class Chunker():
     def _md(self) -> None:
         heading = re.compile(r"#{1,6}\s")
         code_header = re.compile(r"(```|~~~)")
-        lines = self.body.split('\n')
-        cuts = []
+        lines = self.body.split("\n")
+        cuts: list[int] = []
         offset = 0
         code_block = False
         for line in lines:
@@ -132,29 +135,14 @@ class Chunker():
         for cut in cuts:
             for start, end in self._windows(previous, cut):
                 try:
-                    self.chunks.append(Chunk(
-                                file_path=str(self.path),
-                                first_character_index=start,
-                                last_character_index=end,
-                                text=self.body[start:end]))
+                    self.chunks.append(
+                        Chunk(
+                            file_path=str(self.path),
+                            first_character_index=start,
+                            last_character_index=end,
+                            text=self.body[start:end],
+                        )
+                    )
                 except ValidationError as e:
-                    raise ValueError(e)
+                    raise ChunkError(e)
             previous = cut
-
-
-if __name__ == "__main__":
-    p = Path('test')
-    for p in list(p.glob('*.md')):
-        print(f"{p=}")
-        ch = Chunker(p)
-        ch.run()
-        for c in ch.chunks:
-            print(f"{c.file_path=}\n{c.start=}\n{c.end=}\n{c.text=}")
-
-    p = Path('test')
-    for p in list(p.glob('*.py')):
-        print(f"{p=}")
-        ch = Chunker(p)
-        ch.run()
-        for c in ch.chunks:
-            print(f"{c.file_path=}\n{c.start=}\n{c.end=}\n{c.text=}")

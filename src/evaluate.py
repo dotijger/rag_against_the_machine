@@ -3,13 +3,13 @@ import logging
 from src.error import ImporterError
 from src.import_utils import load_model
 from src.models import (
-        StudentSearchResults,
-        Evaluation,
-        MinimalSource,
-        MinimalSearchResults,
-        AnsweredQuestion,
-        AnsweredRagDataset,
-        )
+    StudentSearchResults,
+    Evaluation,
+    MinimalSource,
+    MinimalSearchResults,
+    AnsweredQuestion,
+    AnsweredRagDataset,
+)
 
 log = logging.getLogger(__name__)
 
@@ -23,23 +23,26 @@ def iou(a: tuple[int, int], b: tuple[int, int]) -> float:
 def matching_sources(result: MinimalSource, reference: MinimalSource) -> bool:
     if result.file_path != reference.file_path:
         return False
-    if iou(
+    if (
+        iou(
             (result.first_character_index, result.last_character_index),
-            (reference.first_character_index, reference.last_character_index)
-            ) < 0.05:
+            (reference.first_character_index, reference.last_character_index),
+        )
+        < 0.05
+    ):
         return False
     return True
 
 
 def get_student_search_dict(
-        student_results: list[MinimalSearchResults]
-        ) -> dict[str, list[MinimalSource]]:
+    student_results: list[MinimalSearchResults],
+) -> dict[str, list[MinimalSource]]:
     return {s.question_id: s.retrieved_sources for s in student_results}
 
 
 def get_recall_score(
-        retrieved: list[MinimalSource],
-        references: list[MinimalSource]) -> float:
+    retrieved: list[MinimalSource], references: list[MinimalSource]
+) -> float:
     references_matched = 0
     for reference in references:
         for source in retrieved:
@@ -53,9 +56,10 @@ def get_recall_score(
 
 
 def get_recall_k(
-        k: int,
-        student_results: dict[str, list[MinimalSource]],
-        rag_questions: list[AnsweredQuestion]) -> float:
+    k: int,
+    student_results: dict[str, list[MinimalSource]],
+    rag_questions: list[AnsweredQuestion],
+) -> float:
     scores = 0.0
     for question in rag_questions:
         question_id, references = question.question_id, question.sources
@@ -64,7 +68,7 @@ def get_recall_k(
             continue
         score = get_recall_score(retrieved[:k], references)
         scores += score
-    return (scores / len(rag_questions))
+    return scores / len(rag_questions)
 
 
 def run_evaluation(search_path: str, dataset_path: str) -> Evaluation:
@@ -74,8 +78,11 @@ def run_evaluation(search_path: str, dataset_path: str) -> Evaluation:
         log.info("Student data is valid: True")
     except ImporterError as e:
         log.warning("Student data is valid: False")
-        raise ImporterError(e)
-    true_sources = load_model(dataset_path, AnsweredRagDataset)
+        raise ImporterError(e) from e
+    try:
+        true_sources = load_model(dataset_path, AnsweredRagDataset)
+    except ImporterError as e:
+        raise ImporterError(e) from e
 
     metrics = []
     student_k = student_results.k
@@ -84,11 +91,9 @@ def run_evaluation(search_path: str, dataset_path: str) -> Evaluation:
         if k > student_k:
             break
         metrics.append(
-                (k, get_recall_k(k, student_dict, true_sources.rag_questions))
-                )
+            (k, get_recall_k(k, student_dict, true_sources.rag_questions))
+        )
 
     return Evaluation(
-        metrics=metrics,
-        k=student_k,
-        count=len(true_sources.rag_questions)
-        )
+        metrics=metrics, k=student_k, count=len(true_sources.rag_questions)
+    )
