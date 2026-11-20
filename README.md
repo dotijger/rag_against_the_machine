@@ -166,7 +166,7 @@ src/
 ├── evaluate.py      recall@k against a ground-truth dataset
 ├── models.py        Pydantic models (subject models plus Chunk)
 ├── error.py         RAGError and its subclasses
-└── utils.py         JSON loading and file helpers
+└── import_utils.py         JSON loading and file helpers
 ```
 
 The core (`RAGMachine`) never prints; it returns Pydantic models. The CLI
