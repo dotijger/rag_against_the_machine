@@ -38,6 +38,8 @@ class RAGMachine:
         self.model: AnswerGenerator | None = None
 
     def _check_k(self, k: int) -> None:
+        if not ininstance(k, int):
+            raise RAGError("Parameter k has to be a positive integer.")
         if k <= 0:
             raise RAGError("Parameter k has to be a positive integer.")
         if k >= len(self.chunked_corpus):

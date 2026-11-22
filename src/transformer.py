@@ -66,6 +66,7 @@ class AnswerGenerator:
                     f"Context budget reached, dropped {len(chunks) - rank + 1}"
                     f" of {len(chunks)} sources."
                 )
+                break
             parts.append(block)
             remaining -= cost
         return "".join(parts)
@@ -81,7 +82,8 @@ class AnswerGenerator:
             self.model.device
         )
         output = self.model.generate(
-            **inputs, max_new_tokens=300, do_sample=False
+            **inputs, max_new_tokens=self.max_generated_tokens,
+            do_sample=False
         )
         answer_ids = output[0][inputs["input_ids"].shape[1]:]
         answer_result = self.tokenizer.decode(

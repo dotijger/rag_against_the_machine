@@ -24,7 +24,7 @@ class Chunker:
         self.body: str = ""
 
     def _read_source(self) -> None:
-        with open(self.path, encoding="utf-8") as f:
+        with open(self.path, encoding="utf-8", newline="") as f:
             self.body = f.read()
 
     # added start and stop that default to the full unchunked file body but

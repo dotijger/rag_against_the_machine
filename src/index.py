@@ -18,8 +18,6 @@ class Indexer:
         self, corpus: list[Chunk], loaded: bool, output_path: Path, mode: Mode
     ) -> None:
         self.corpus = corpus
-        if mode == "bm25":
-            (output_path / "embeddings.npy").unlink(missing_ok=True)
         if mode != "bm25":
             self.minilm_retriever = SentenceTransformer(
                 "sentence-transformers/all-MiniLM-L6-v2",
@@ -27,6 +25,8 @@ class Indexer:
             )
         if not loaded:
             self.bm25s_retriever = bm25s.BM25()
+            if mode == "bm25":
+                (output_path / "embeddings.npy").unlink(missing_ok=True)
         else:
             self.bm25s_retriever = bm25s.BM25.load(output_path / "bm25s")
             if mode == "semantic" or mode == "hybrid":

@@ -15,8 +15,6 @@ class CLI:
         self,
         raw_dir: str = "data/raw",
         processed_dir: str = "data/processed",
-        log_level: str = "warning",
-        file_path: str | None = None,
     ) -> None:
         self.rag = RAGMachine(raw_dir, processed_dir)
         setup_logging()
