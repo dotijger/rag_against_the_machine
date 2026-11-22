@@ -22,7 +22,7 @@ that merges both rankings with Reciprocal Rank Fusion.
 
 ### Requirements
 
-- Python 3.10+
+- Python 3.12+
 - [uv](https://docs.astral.sh/uv/)
 - About 2 GB of free disk space for the model weights (Qwen3-0.6B, plus
   MiniLM if you use semantic or hybrid mode)
