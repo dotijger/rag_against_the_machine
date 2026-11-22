@@ -24,9 +24,14 @@ dependencies = [
 mypy_path = "."
 explicit_package_bases = true
 
+[[tool.mypy.overrides]]
+module = ['bm25s', 'bm25s.*', 'Stemmer', 'fire']
+ignore_missing_imports = true
+
 [dependency-groups]
 dev = [
     "ruff>=0.17.6",
+    "types-tqdm>=4.70.0.20261122",
 ]
 
 [tool.ruff]

@@ -1,5 +1,6 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import logging
+from typing import Any
 
 from src.models import MinimalSearchResults, MinimalAnswer, Chunk
 from src.error import RAGError
@@ -20,7 +21,7 @@ class AnswerGenerator:
     ) -> None:
         self.model_name = name
         self.tokenizer = AutoTokenizer.from_pretrained(name)
-        self.model = AutoModelForCausalLM.from_pretrained(
+        self.model: Any = AutoModelForCausalLM.from_pretrained(
             name, torch_dtype="auto", device_map="auto"
         )
         self.max_generated_tokens = max_new_tokens
@@ -40,12 +41,14 @@ class AnswerGenerator:
                 "content": f"Context:\n{context}\nQuestion:{query}",
             },
         ]
-        prompt: str = self.tokenizer.apply_chat_template(
+        prompt = self.tokenizer.apply_chat_template(
             messages,
             tokenize=False,
             add_generation_prompt=True,
             enable_thinking=False,
         )
+        if not isinstance(prompt, str):
+            raise RAGError("Chat template did not return a string.")
         return prompt
 
     def _fit_context(self, query: str, chunks: list[Chunk]) -> str:
@@ -71,7 +74,8 @@ class AnswerGenerator:
         self, search_results: MinimalSearchResults, chunks: list[Chunk]
     ) -> MinimalAnswer:
         prompt = self._render_prompt(
-            self._fit_context(search_results.question, chunks)
+            search_results.question,
+            self._fit_context(search_results.question, chunks),
         )
         inputs = self.tokenizer(prompt, return_tensors="pt").to(
             self.model.device
@@ -83,6 +87,8 @@ class AnswerGenerator:
         answer_result = self.tokenizer.decode(
             answer_ids, skip_special_tokens=True
         )
+        if not isinstance(answer_result, str):
+            raise RAGError("Decoder did not return a string.")
 
         return MinimalAnswer(
             question=search_results.question,
