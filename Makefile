@@ -23,12 +23,12 @@ clean:
 	rm -f data/log
 
 lint:
-	uv run flake8 $(src_dir)
-	uv run mypy $(src_dir) $(mypy_flags)
+	uv run flake8 .
+	uv run mypy . $(mypy_flags)
 
 lint-strict:
-	uv run flake8 $(src_dir)
-	uv run mypy $(src_dir) --strict
+	uv run flake8 .
+	uv run mypy . --strict
 
 
 

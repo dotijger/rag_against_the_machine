@@ -21,6 +21,7 @@ dependencies = [
 ]
 
 [tool.mypy]
+exclude = ['^\.venv/', '^data/']
 mypy_path = "."
 explicit_package_bases = true
 
