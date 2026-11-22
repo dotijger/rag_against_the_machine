@@ -15,7 +15,7 @@ run:
 	uv run python3 -m $(src_dir) $(args)
 
 debug:
-	uv run python3 -m pdb -m $(src_dir)
+	uv run python3 -m pdb -m $(src_dir) $(args)
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
