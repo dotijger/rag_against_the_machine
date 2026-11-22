@@ -99,3 +99,20 @@ First run: `uv run python3 -m src index --max_chunk_size <int>`
 2026-11-22 11:52:54,011 [src.rag] [INFO] Indexing time: 3.212s.
 2026-11-22 11:53:27,108 [src.rag] [INFO] Chunking time: 0.366s.
 2026-11-22 11:53:30,474 [src.rag] [INFO] Indexing time: 3.365s.
+2026-11-22 13:46:03,512 [src.cli] [ERROR] Parameter k has to be a positive integer.
+2026-11-22 13:46:26,247 [src.cli] [ERROR] Parameter k has to be a positive integer.
+2026-11-22 13:46:33,430 [src.rag] [DEBUG] #1 data/raw/vllm-0.10.1/.buildkite/check-wheel-size.py [0:1998]
+2026-11-22 13:46:33,430 [src.rag] [DEBUG] #2 data/raw/vllm-0.10.1/vllm/worker/worker_base.py [25167:25996]
+2026-11-22 13:46:33,430 [src.rag] [DEBUG] #3 data/raw/vllm-0.10.1/vllm/worker/worker_base.py [24051:25167]
+2026-11-22 13:46:33,430 [src.rag] [DEBUG] #4 data/raw/vllm-0.10.1/vllm/worker/worker_base.py [22102:24051]
+2026-11-22 13:46:33,430 [src.rag] [DEBUG] #5 data/raw/vllm-0.10.1/vllm/worker/worker_base.py [20109:22102]
+2026-11-22 13:46:33,430 [src.rag] [DEBUG] #6 data/raw/vllm-0.10.1/vllm/worker/worker_base.py [18153:20109]
+2026-11-22 13:46:33,430 [src.rag] [DEBUG] #7 data/raw/vllm-0.10.1/vllm/worker/worker_base.py [16897:18153]
+2026-11-22 13:46:33,430 [src.rag] [DEBUG] #8 data/raw/vllm-0.10.1/vllm/worker/worker_base.py [14904:16897]
+2026-11-22 13:46:33,430 [src.rag] [DEBUG] #9 data/raw/vllm-0.10.1/vllm/worker/worker_base.py [12917:14904]
+2026-11-22 13:46:33,430 [src.rag] [DEBUG] #10 data/raw/vllm-0.10.1/vllm/worker/worker_base.py [10920:12917]
+2026-11-22 13:51:44,018 [src.cli] [ERROR] Query 'the the' has no searchable termsafter stopword removal.
+2026-11-22 13:51:58,845 [src.cli] [ERROR] Query 'the the' has no searchable terms after stopword removal.
+2026-11-22 13:52:10,566 [src.cli] [ERROR] Max chunk size has to be a positive integer.
+2026-11-22 13:52:21,785 [src.rag] [INFO] Chunking time: 0.303s.
+2026-11-22 13:52:24,292 [src.rag] [INFO] Indexing time: 2.506s.

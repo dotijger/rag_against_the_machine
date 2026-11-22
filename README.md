@@ -58,9 +58,9 @@ git clone --depth 1 https://github.com/vllm-project/vllm data/raw
 | `make install`    | Install dependencies with uv                   |
 | `make run`        | Run the program, passing `args` through        |
 | `make debug`      | Run under pdb, passing `args` through          |
-| `make clean`      | Remove caches (`__pycache__`, `.mypy_cache`)   |
-| `make lint`       | Run flake8 and mypy with the subject's flags   |
-| `make lint-strict`| Run flake8 and mypy in strict mode             |
+| `make clean`      | Remove caches (`__pycache__`, `.mypy_cache`) and the log file |
+| `make lint`       | Run `flake8 .` and `mypy .` with the subject's flags |
+| `make lint-strict`| Run `flake8 .` and `mypy . --strict`           |
 
 `make run` and `make debug` pass the `args` variable to the program, so these
 two lines are equivalent:
@@ -82,7 +82,7 @@ uv run python -m src <command> [options]
 
 | Command          | Arguments                                                        | Output |
 |------------------|------------------------------------------------------------------|--------|
-| `index`          | `--max_chunk_size <int>`                                         | Builds the index in the processed directory |
+| `index`          | `--max_chunk_size <int>` (1–2000, default 2000)                  | Builds the index in the processed directory |
 | `search`         | `<query> --k <int>`                                              | Top-k sources for one query |
 | `search_dataset` | `--dataset_path <path> --k <int> --save_directory <dir>`         | `StudentSearchResults` JSON |
 | `answer`         | `<query> --k <int>`                                              | Retrieves, then answers one query |
@@ -145,20 +145,21 @@ uv run python -m src search "How does vLLM schedule requests?" --k 5
 # 3. Answer a single question
 uv run python -m src answer "How do I enable LoRA adapters?" --k 5
 
-# 4. Search a whole dataset
+# 4. Search a whole dataset (scope the output folder by dataset, the public
+#    datasets share file names)
 uv run python -m src search_dataset \
-    --dataset_path datasets_public/public/AnsweredQuestions/dataset_docs_public.json \
-    --k 10 --save_directory data/output/search_results
+    --dataset_path data/datasets/UnansweredQuestions/dataset_docs_public.json \
+    --k 10 --save_directory data/output/search_results/UnansweredQuestions
 
 # 5. Measure recall@k against the ground truth
 uv run python -m src evaluate \
-    --student_search_results_path data/output/search_results/dataset_docs_public.json \
-    --dataset_path datasets_public/public/AnsweredQuestions/dataset_docs_public.json
+    --student_search_results_path data/output/search_results/UnansweredQuestions/dataset_docs_public.json \
+    --dataset_path data/datasets/AnsweredQuestions/dataset_docs_public.json
 
 # 6. Generate answers from the saved search results
 uv run python -m src answer_dataset \
-    --student_search_results_path data/output/search_results/dataset_docs_public.json \
-    --save_directory data/output/search_results_and_answer
+    --student_search_results_path data/output/search_results/UnansweredQuestions/dataset_docs_public.json \
+    --save_directory data/output/search_results_and_answer/UnansweredQuestions
 ```
 
 ## System architecture
@@ -208,7 +209,9 @@ The processed directory contains:
 
 Code and prose break naturally in different places, so each file type gets its
 own chunker. Every chunker produces spans within `--max_chunk_size`
-characters.
+characters. The size must be between 1 and 2000 (the default): the moulinette
+rejects any retrieved source longer than 2000 characters, so larger values are
+refused before indexing starts.
 
 - **Python (`.py`)**: candidate cuts are placed at lines that start a top-level
   `def`, `async def` or `class`. Decorators stay attached to the definition below
@@ -294,6 +297,17 @@ Observations:
   therefore stays the default mode.
 - Semantic and hybrid search are about 160x slower per query (~8 s vs ~0.05 s
   for 100 questions) because each query is embedded on the CPU.
+
+Speed against the subject's limits (5 minutes to index, 90 seconds for 200
+questions), measured on a CPU-only machine:
+
+| Mode              | Indexing time | Retrieval, 199 questions |
+|-------------------|---------------|--------------------------|
+| BM25              | ~3.5 s        | ~0.1 s                   |
+| Semantic / hybrid | ~200 s        | ~16 s                    |
+
+Embedding all 13,502 chunks with MiniLM takes most of the hybrid indexing
+time; it stays within the 5-minute limit, but with less margin than BM25.
 - Docs has the smaller margin over its target (85% vs 80%), so it is the
   dataset most at risk on hidden questions.
 

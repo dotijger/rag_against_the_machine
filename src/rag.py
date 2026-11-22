@@ -19,15 +19,17 @@ from src.models import (
     SourceKey,
     Mode,
 )
-from src.error import RAGError
+from src.error import RAGError, EmptyQueryError
 from src.import_utils import load_model
 from src.evaluate import run_evaluation
 from src.transformer import AnswerGenerator
+from src.tokenizer import tokenize
 
 log = logging.getLogger(__name__)
 
 
 class RAGMachine:
+
     def __init__(self, raw_dir: str, processed_dir: str) -> None:
         self.raw_path = Path(raw_dir)
         self.processed_path = Path(processed_dir)
@@ -36,9 +38,10 @@ class RAGMachine:
         self.chunk_by_source: dict[SourceKey, Chunk] = {}
         self.supported: list[str] = [".md", ".py", ".txt"]
         self.model: AnswerGenerator | None = None
+        self.MAX_CHUNK_SIZE: int = 2000
 
     def _check_k(self, k: int) -> None:
-        if not ininstance(k, int):
+        if not isinstance(k, int) or isinstance(k, bool):
             raise RAGError("Parameter k has to be a positive integer.")
         if k <= 0:
             raise RAGError("Parameter k has to be a positive integer.")
@@ -103,6 +106,15 @@ class RAGMachine:
 
     def index(self, max_chunk_size: int, mode: Mode = "bm25") -> int:
         start = time.perf_counter()
+        if (
+            not isinstance(max_chunk_size, int)
+            or isinstance(max_chunk_size, bool)
+            or not 0 < max_chunk_size <= self.MAX_CHUNK_SIZE
+        ):
+            raise RAGError(
+                "Max chunk size has to be an integer between"
+                f" 1 and {self.MAX_CHUNK_SIZE}."
+            )
         self._chunk(max_chunk_size, self.raw_path)
         elapsed = time.perf_counter() - start
         log.info(f"Chunking time: {elapsed:.3f}s.")
@@ -130,6 +142,9 @@ class RAGMachine:
         )
 
     def _base_search(self, query: str, k: int, mode: Mode) -> list[int]:
+        if mode != 'semantic' and not tokenize(query):
+            raise EmptyQueryError(f"Query '{query}' has no searchable terms"
+                           " after stopword removal.")
         return self._ensure_index(mode).get_ktop_idx(query, k, mode)
 
     def _search_with_chunks(
@@ -183,7 +198,12 @@ class RAGMachine:
         start = time.perf_counter()
         for q in tqdm(range(len(rag_dataset.rag_questions))):
             question = rag_dataset.rag_questions[q]
-            sources_idx = self._base_search(question.question, k, mode)
+            try:
+                sources_idx = self._base_search(question.question, k, mode)
+            except EmptyQueryError:
+                log.warning(f"No searchable terms in question {question.question_id}"
+                            " saving it with no retrieved sources.")
+                sources_idx = []
             search_results.append(
                 MinimalSearchResults(
                     question_id=question.question_id,

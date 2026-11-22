@@ -62,9 +62,7 @@ class CLI:
 
         self.console.print(table)
 
-    def index(self, max_chunk_size: int, mode: Mode = "bm25") -> None:
-        if max_chunk_size <= 0:
-            raise RAGError("Max chunk size has to be a positive integer.")
+    def index(self, max_chunk_size: int = 2000, mode: Mode = "bm25") -> None:
         self.console.rule(f"RAG · INDEX · {mode.upper()} · {max_chunk_size}")
         chunks = self.rag.index(max_chunk_size, mode)
         self.console.print(
