@@ -72,3 +72,30 @@
 2026-11-22 11:27:44,164 [src.rag] [DEBUG] #8 data/raw/vllm-0.10.1/tests/v1/entrypoints/openai/responses/test_stateful.py [3592:4508]
 2026-11-22 11:27:44,164 [src.rag] [DEBUG] #9 data/raw/vllm-0.10.1/tests/v1/entrypoints/openai/responses/test_stateful.py [1808:3592]
 2026-11-22 11:27:44,164 [src.rag] [DEBUG] #10 data/raw/vllm-0.10.1/examples/offline_inference/openai_batch/README.md [5414:6596]
+2026-11-22 11:31:30,317 [src.rag] [INFO] Chunking time: 0.330s.
+2026-11-22 11:31:30,318 [src.cli] [CRITICAL] Unexpected error occurred: [Errno 13] Permission denied: '/goinfre'
+2026-11-22 11:31:34,277 [src.cli] [ERROR] Index needs to run before calling any other RAG methods.
+First run: `uv run python3 -m src index --max_chunk_size <int>`
+2026-11-22 11:31:41,810 [src.cli] [ERROR] Index needs to run before calling any other RAG methods.
+First run: `uv run python3 -m src index --max_chunk_size <int>`
+2026-11-22 11:32:18,055 [src.cli] [WARNING] User interrupted RAG session.
+2026-11-22 11:34:01,358 [src.rag] [INFO] Chunking time: 0.359s.
+2026-11-22 11:34:04,853 [src.rag] [INFO] Indexing time: 3.494s.
+2026-11-22 11:34:08,994 [src.rag] [INFO] Chunking time: 0.368s.
+2026-11-22 11:37:28,905 [src.rag] [INFO] Indexing time: 199.910s.
+2026-11-22 11:37:33,225 [src.rag] [INFO] Retrieval throughput 0.04828496899972379s for 99 questions.
+2026-11-22 11:37:37,316 [src.evaluate] [INFO] Student data is valid: True
+2026-11-22 11:37:41,658 [src.rag] [INFO] Retrieval throughput 0.05059626100046444s for 100 questions.
+2026-11-22 11:37:45,715 [src.evaluate] [INFO] Student data is valid: True
+2026-11-22 11:37:58,127 [src.rag] [INFO] Retrieval throughput 8.13214830600009s for 99 questions.
+2026-11-22 11:38:02,340 [src.evaluate] [INFO] Student data is valid: True
+2026-11-22 11:38:14,804 [src.rag] [INFO] Retrieval throughput 8.085417237000001s for 100 questions.
+2026-11-22 11:38:18,928 [src.evaluate] [INFO] Student data is valid: True
+2026-11-22 11:38:31,330 [src.rag] [INFO] Retrieval throughput 8.145034316999954s for 99 questions.
+2026-11-22 11:38:35,210 [src.evaluate] [INFO] Student data is valid: True
+2026-11-22 11:38:47,477 [src.rag] [INFO] Retrieval throughput 8.206486703999872s for 100 questions.
+2026-11-22 11:38:51,495 [src.evaluate] [INFO] Student data is valid: True
+2026-11-22 11:52:50,798 [src.rag] [INFO] Chunking time: 0.326s.
+2026-11-22 11:52:54,011 [src.rag] [INFO] Indexing time: 3.212s.
+2026-11-22 11:53:27,108 [src.rag] [INFO] Chunking time: 0.366s.
+2026-11-22 11:53:30,474 [src.rag] [INFO] Indexing time: 3.365s.

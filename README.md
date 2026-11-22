@@ -56,11 +56,21 @@ git clone --depth 1 https://github.com/vllm-project/vllm data/raw
 | Rule              | What it does                                   |
 |-------------------|------------------------------------------------|
 | `make install`    | Install dependencies with uv                   |
-| `make run`        | Run the program                                |
-| `make debug`      | Run under pdb                                  |
+| `make run`        | Run the program, passing `args` through        |
+| `make debug`      | Run under pdb, passing `args` through          |
 | `make clean`      | Remove caches (`__pycache__`, `.mypy_cache`)   |
 | `make lint`       | Run flake8 and mypy with the subject's flags   |
 | `make lint-strict`| Run flake8 and mypy in strict mode             |
+
+`make run` and `make debug` pass the `args` variable to the program, so these
+two lines are equivalent:
+
+```bash
+make run args="search 'how is the KV cache sized' --k 5"
+uv run python -m src search 'how is the KV cache sized' --k 5
+```
+
+Without `args`, `make run` prints the list of available commands.
 
 ### Commands
 
@@ -81,8 +91,12 @@ uv run python -m src <command> [options]
 
 `index`, `search`, `search_dataset` and `answer` also take `--mode`
 (`bm25`, `semantic` or `hybrid`, default `bm25`). Semantic and hybrid search
-need an index that was built with the same mode, because they read the
-stored embeddings.
+read stored embeddings, so they need an index built in `semantic` or `hybrid`
+mode. Both of those modes write the same files (BM25 index plus embeddings), so
+one such index serves both search modes.
+
+`evaluate` reports recall only up to the `k` stored in the results file, so run
+`search_dataset` with `--k 10` to get all four values.
 
 ## Configuration
 
@@ -112,6 +126,12 @@ uv run python -m src --processed_dir /tmp/vllm_index search "how is the KV cache
 |-------------------|------------------|---------------------------|
 | `--raw_dir`       | `data/raw`       | `index`                   |
 | `--processed_dir` | `data/processed` | `index` and all searches  |
+
+Reported file paths start with the raw directory as you pass it. The public
+datasets use the default layout, so evaluate with the default `--raw_dir`;
+a different raw directory produces paths that do not match the ground truth.
+
+Logs are shown on stderr (INFO and above) and written in full to `data/log`.
 
 ## Example usage
 
@@ -151,22 +171,25 @@ everything to disk once; every later command loads it back.
  data/raw ──► Chunker ──► Tokenizer ──► BM25 ──┐     query ──► Tokenizer ──► BM25 ──► top-k
                  │                              │                                       │
                  ▼                              ▼                                       ▼
-          chunks.jsonl                    bm25s index/          chunks.jsonl ──► context ──► Qwen3-0.6B ──► answer
+          chunks.jsonl                    bm25s/ index          chunks.jsonl ──► context ──► Qwen3-0.6B ──► answer
                                         (embeddings.npy)
 ```
 
 ```
 src/
-├── __main__.py      Entry point: runs Fire, turns RAGError into a clean message
-├── cli.py           Thin CLI layer: argument validation and terminal output
-├── rag.py           RAGMachine, the core: index, search, answer, *_dataset
-├── chunker.py       File-type-aware chunking (.py, .md, fallback window)
-├── index.py         Indexer: tokenizer, BM25 build/load, optional embeddings
-├── transformer.py   AnswerGenerator: prompt building and Qwen3 generation
-├── evaluate.py      recall@k against a ground-truth dataset
-├── models.py        Pydantic models (subject models plus Chunk)
-├── error.py         RAGError and its subclasses
-└── import_utils.py         JSON loading and file helpers
+├── __main__.py          Entry point: runs Fire, turns RAGError into a clean message
+├── cli.py               Thin CLI layer: argument checks and terminal output
+├── rag.py               RAGMachine, the core: index, search, answer, *_dataset
+├── chunker.py           File-type-aware chunking (.py, .md, fallback window)
+├── tokenizer.py         Identifier splitting, stopwords and stemming for BM25
+├── index.py             Indexer: BM25 build/load, optional embeddings, retrieval
+├── hybrid_retrieval.py  Reciprocal Rank Fusion of two rankings
+├── transformer.py       AnswerGenerator: prompt building and Qwen3 generation
+├── evaluate.py          recall@k against a ground-truth dataset
+├── models.py            Pydantic models (subject models plus Chunk)
+├── error.py             RAGError and its subclasses
+├── import_utils.py      JSON loading and file helpers
+└── log_setup.py         Rich console logging and the log file
 ```
 
 The core (`RAGMachine`) never prints; it returns Pydantic models. The CLI
@@ -178,8 +201,7 @@ The processed directory contains:
 | File            | Contents |
 |-----------------|----------|
 | `chunks.jsonl`  | One `Chunk` per line: file path, start, end and text |
-| `meta.json`     | Index settings (chunk size, mode, tokenizer options) |
-| `bm25/`         | The saved `bm25s` index |
+| `bm25s/`        | The saved `bm25s` index |
 | `embeddings.npy`| MiniLM vectors, only in semantic and hybrid mode |
 
 ## Chunking strategy
@@ -188,20 +210,20 @@ Code and prose break naturally in different places, so each file type gets its
 own chunker. Every chunker produces spans within `--max_chunk_size`
 characters.
 
-- **Python (`.py`)**: split at top-level `def` and `class` boundaries. Decorators
-  stay attached to the definition below them. A function or class that exceeds
-  the maximum size falls back to the fixed window.
-- **Markdown (`.md`)**: split at headings, ignoring `#` lines inside code fences.
-  Very small sections are merged with the next one; oversized sections are split
-  at paragraph boundaries, then by the fixed window if a paragraph is still too
-  long.
-- **Everything else (`.txt`, …)**: a fixed-size window.
+- **Python (`.py`)**: candidate cuts are placed at lines that start a top-level
+  `def`, `async def` or `class`. Decorators stay attached to the definition below
+  them. Neighbouring small sections are then merged as long as they fit in the
+  maximum size, and a section that is still too large is split at the last line
+  break before the limit.
+- **Markdown (`.md`)**: cuts at headings, ignoring `#` lines inside code fences.
+  Small sections are merged in the same way, and oversized sections are split at
+  line breaks.
+- **Everything else (`.txt`)**: a fixed-size window.
 
-Offsets are **character** indices, not bytes. All files are read through one
-function with `encoding="utf-8", newline=""` so that `\r\n` is never translated
-and offsets match the file on disk. `last_character_index` is exclusive, like a
-Python slice. A round-trip check confirms that
-`source[first:last] == chunk.text` for every chunk in the index.
+Offsets are **character** indices, not bytes, and `last_character_index` is
+exclusive, like a Python slice. The `Chunk` model validates every chunk on
+creation: the start must be before the end and the text length must equal the
+span length.
 
 Chunk size matters more than it seems, because a retrieved span only counts as a
 match if its IoU with the reference span is at least 0.05. A short reference
@@ -213,19 +235,17 @@ was found, so the maximum size is a ceiling, not a target.
 Retrieval is BM25 via [`bm25s`](https://github.com/xhluca/bm25s). Most of the
 gain came from the tokenizer, not from the scoring function:
 
-- **Identifier splitting.** `KVCacheManager` and `allocate_kv_cache` are indexed
-  both as the whole identifier and as their parts (`kv`, `cache`, `manager`,
-  `allocate`). A plain-English question can then match code it never quotes.
-- **File path in the indexed text.** The chunk's path is prepended to the text
-  that gets tokenized (but not to the stored text or the reported span). Path
-  parts like `quantization`, `scheduler` and `attention` are strong signals.
+- **Identifier splitting.** `snake_case` and `camelCase` identifiers are indexed
+  both as the whole identifier and as their parts: `allocate_kv_cache` also gives
+  `allocate`, `kv`, `cache`, and `CacheManager` gives `cache`, `manager`. A
+  plain-English question can then match code it never quotes.
 - **Lowercasing, English stopword removal and stemming**, applied identically to
   chunks at index time and to queries at search time.
 
 **Bonus modes.** `semantic` embeds every chunk with `all-MiniLM-L6-v2` and ranks
 by cosine similarity (normalized vectors, a single matrix product with numpy).
-`hybrid` retrieves candidates from both BM25 and the embeddings and merges the
-two rankings with Reciprocal Rank Fusion.
+`hybrid` retrieves the top 60 candidates from both BM25 and the embeddings and
+merges the two rankings with Reciprocal Rank Fusion (constant 60).
 
 ## Answer generation
 
@@ -234,46 +254,48 @@ again: it reads an existing `StudentSearchResults` file, looks up the text of
 each source in `chunks.jsonl` by its `(file, start, end)` key and generates from
 that. This is why it takes no `k`; the value is inherited from the input file.
 
-The prompt is built with Qwen3's own chat template. Fixed rules go in the system
-message (answer only from the context, be concise); the retrieved chunks and the
-question go in the user message. Thinking is disabled with
-`enable_thinking=False`, decoding is greedy for reproducibility, and only the
-newly generated tokens are decoded. The model is loaded lazily, once per run,
-so `index` and `search` never load it.
+The prompt is built with Qwen3's own chat template. The fixed rule (answer using
+only the provided context) goes in the system message; the retrieved chunks,
+each labelled with its file path, and the question go in the user message.
+Thinking is disabled with `enable_thinking=False`, decoding is greedy for
+reproducibility, and only the newly generated tokens are decoded. The model is
+loaded lazily, once per run, so `index` and `search` never load it.
 
 ## Performance analysis
 
 Measured with `evaluate` on the public datasets (99 code questions, 100 docs
-questions). `--max_chunk_size 2000` unless noted.
+questions), `--max_chunk_size 2000`, k = 10.
 
 **Code dataset**
 
-| Change                                             | R@1   | R@3   | R@5   | R@10  |
-|----------------------------------------------------|-------|-------|-------|-------|
-| Baseline: fixed windows, whitespace tokenizer      | ~0.33 | 0.46  | TODO  | 0.64  |
-| + structure-aware chunking                         | TODO  | TODO  | TODO  | TODO  |
-| + identifier splitting, path, stopwords, stemming  | TODO  | 0.67  | 0.73  | 0.81  |
-| Hybrid (BM25 + MiniLM, RRF)                        | 0.364 | 0.515 | 0.586 | 0.737 |
+| Mode                        | R@1   | R@3   | R@5   | R@10  |
+|-----------------------------|-------|-------|-------|-------|
+| Final BM25                  | 0.404 | 0.667 | 0.727 | 0.808 |
+| Semantic (MiniLM)           | 0.212 | 0.354 | 0.374 | 0.495 |
+| Hybrid (BM25 + MiniLM, RRF) | 0.364 | 0.515 | 0.586 | 0.737 |
 
 **Docs dataset**
 
-| Change                                             | R@1   | R@3   | R@5   | R@10  |
-|----------------------------------------------------|-------|-------|-------|-------|
-| Final BM25                                         | TODO  | TODO  | 0.85  | TODO  |
+| Mode                        | R@1   | R@3   | R@5   | R@10  |
+|-----------------------------|-------|-------|-------|-------|
+| Final BM25                  | 0.620 | 0.790 | 0.850 | 0.880 |
+| Semantic (MiniLM)           | 0.350 | 0.500 | 0.620 | 0.670 |
+| Hybrid (BM25 + MiniLM, RRF) | 0.520 | 0.730 | 0.750 | 0.840 |
 
 Observations:
 
-- Structure-aware chunking on its own barely moved the numbers; the difference
-  was a few questions either way. The bottleneck was what BM25 could match on.
-- The tokenizer change was the largest single improvement: recall@10 on code
-  went from 64% to 81%, so about seventeen more questions got the right source in
-  front of the model.
-- Hybrid retrieval made the code scores **worse**. MiniLM is trained on natural
-  language and does not understand identifiers well, so fusing its ranking in
-  pushed good BM25 hits down. BM25 therefore stays the default mode.
-- Both final BM25 scores are above the subject's targets (80% recall@5 on docs,
-  50% on code). Docs has the smaller margin, so it is the dataset most at risk
-  on hidden questions.
+- BM25 is the best mode on both datasets at every k, and the only one above
+  both subject targets (80% recall@5 on docs, 50% on code).
+- Semantic retrieval alone fails the code target (37% recall@5). MiniLM is
+  trained on natural language and does not understand identifiers such as
+  `allocate_kv_cache`. It does relatively better on docs (62%), which are prose.
+- Hybrid retrieval scores below BM25 on both datasets. RRF weights both rankings
+  equally, so the much weaker semantic ranking pushes good BM25 hits down. BM25
+  therefore stays the default mode.
+- Semantic and hybrid search are about 160x slower per query (~8 s vs ~0.05 s
+  for 100 questions) because each query is embedded on the CPU.
+- Docs has the smaller margin over its target (85% vs 80%), so it is the
+  dataset most at risk on hidden questions.
 
 ## Design decisions
 
@@ -282,16 +304,14 @@ Observations:
   added a large dependency for one function, and its defaults would hide the
   tokenizer, which is where most of the recall comes from.
 - **`Chunk` subclasses `MinimalSource`.** A chunk is a source plus its text. The
-  subclass passes anywhere a `MinimalSource` is expected, and the text is
-  excluded when results are serialized, so the subject's output format is never
-  changed.
+  subclass passes anywhere a `MinimalSource` is expected, and results are always
+  converted back to plain `MinimalSource` objects before they are saved, so the
+  subject's output format is never changed.
 - **Subject models are left as specified.** No extra fields (such as the
   retrieval mode) are added to `StudentSearchResults`; anything the program needs
   later is recovered from the index.
-- **Separate indexed text and reported span.** What BM25 scores (path + text) and
-  what is reported (the raw slice of the file) are deliberately different.
-- **Directories as constructor flags.** No paths are hardcoded; `--raw_dir` and
-  `--processed_dir` are Fire constructor arguments with documented defaults.
+- **Directories as constructor flags.** The raw and processed directories are
+  Fire constructor arguments with documented defaults, not hardcoded paths.
 - **Load once, lazily.** The index, chunks and model are loaded the first time a
   command needs them and reused, never once per question.
 - **One error type at the boundary.** All expected failures raise a subclass of
@@ -300,19 +320,22 @@ Observations:
 
 ## Challenges faced
 
-- **Tokenizing per chunk.** Calling the tokenizer separately for each chunk built
-  a different vocabulary each time, so BM25 returned plausible-looking but
-  meaningless scores. The corpus has to be tokenized in one call.
-- **Character vs byte offsets.** `ast` reports column offsets in bytes, and
-  Python's default newline translation shifts indices on files with `\r\n`.
-  Both silently break the spans. The fix was line-based chunking and a single
-  file-reading function, verified by the round-trip check.
+- **One shared vocabulary.** Calling `bm25s.tokenize` separately for each chunk
+  gave every chunk its own token-ID vocabulary, so BM25 returned
+  plausible-looking but meaningless scores. The fix was to have the tokenizer
+  return plain string tokens and let `bm25s` build a single vocabulary over the
+  whole corpus.
+- **Character vs byte offsets.** `ast` reports column offsets in bytes, which
+  silently breaks character spans on any line with non-ASCII text. The fix was
+  line-based chunking on the decoded text, with the `Chunk` validator checking
+  that every text matches its span length.
 - **IoU and large chunks.** Early on the right file was often retrieved but
   scored as a miss because the chunk was much larger than the reference span.
 - **Fire's quirks.** Fire prints whatever a command returns (whole Pydantic
   objects at first), guesses argument types (`--k abc` arrives as a string), and
-  requires constructor flags before the command name. Every argument is now
-  validated explicitly.
+  requires constructor flags before the command name. Commands now return
+  nothing and print through the CLI layer, and numeric arguments are checked
+  before use.
 - **Missing files.** `glob("*")` instead of `rglob("*")` silently skipped every
   subdirectory of the repository until the chunk count looked suspiciously low.
 - **Answering from saved results.** `answer_dataset` only receives spans, not

@@ -4,6 +4,7 @@ mypy_flags = --warn-return-any \
 			 --ignore-missing-reports \
 			 --disallow-untyped-defs \
 			 --check-untyped-defs
+args ?=
 
 all: install run
 
@@ -11,7 +12,7 @@ install:
 	uv sync
 
 run:
-	uv run python3 -m $(src_dir)
+	uv run python3 -m $(src_dir) $(args)
 
 debug:
 	uv run python3 -m pdb -m $(src_dir)
