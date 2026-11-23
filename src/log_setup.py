@@ -6,6 +6,18 @@ from pathlib import Path
 
 
 def setup_logging(file_path: str) -> None:
+    """Send src logs to the terminal and to a file.
+
+    INFO and above go to stderr through Rich, so they never mix with the
+    command's normal output on stdout. DEBUG and above go to the log file
+    with timestamps and logger names. Existing handlers are removed first,
+    so calling this twice does not duplicate messages, and propagation to
+    the root logger is turned off so other libraries' handlers stay out.
+
+    Args:
+        file_path: Path of the log file; parent directories are created
+            if needed. The file is appended to.
+    """
     logger = logging.getLogger("src")
     logger.setLevel(logging.DEBUG)
     logger.propagate = False

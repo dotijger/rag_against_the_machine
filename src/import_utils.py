@@ -7,6 +7,15 @@ from src.error import ImporterError
 
 
 def _is_readable_path(path: str) -> bool:
+    """Check that path names an existing file that can be opened.
+
+    Args:
+        path: The path to check; a Path is also accepted.
+
+    Returns:
+        True if the path is a regular file that can be opened for
+        reading, False otherwise (including for non-path arguments).
+    """
     if not isinstance(path, (str, Path)):
         return False
 
@@ -23,6 +32,18 @@ def _is_readable_path(path: str) -> bool:
 
 
 def json_load(path: str) -> Any:
+    """Load a JSON file whose top level must be an object.
+
+    Args:
+        path: The JSON file to load.
+
+    Returns:
+        The parsed JSON object as a dict.
+
+    Raises:
+        ImporterError: If the file cannot be read, is not valid JSON, or
+            its top level is not an object.
+    """
     if not _is_readable_path(path):
         raise ImporterError(f"{path} is not a readable path, aborting.")
     with open(path, encoding="utf-8") as f:
@@ -42,6 +63,19 @@ def json_load(path: str) -> Any:
 
 
 def load_model[M: BaseModel](path: str, model_cls: type[M]) -> M:
+    """Read a JSON file and validate it into a Pydantic model.
+
+    Args:
+        path: The JSON file to load.
+        model_cls: The model class the file should match.
+
+    Returns:
+        An instance of model_cls built from the file.
+
+    Raises:
+        ImporterError: If the file cannot be read or decoded, or its
+            contents do not match model_cls.
+    """
     try:
         raw = Path(path).read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as e:

@@ -29,8 +29,28 @@ log = logging.getLogger(__name__)
 
 
 class RAGMachine:
+    """Run the full retrieval-augmented generation pipeline.
+
+    Attributes:
+        raw_path: Directory holding the source files to index.
+        processed_path: Directory holding the saved index.
+        indexer: The loaded or freshly built index, if any.
+        chunked_corpus: All chunks; list positions are the document IDs
+            used by the index.
+        chunk_by_source: Chunks keyed by file and range, for turning saved
+            search results back into chunks.
+        supported: File extensions included when indexing.
+        model: The answer generator, loaded on first use.
+        MAX_CHUNK_SIZE: Largest allowed max_chunk_size.
+    """
 
     def __init__(self, raw_dir: str, processed_dir: str) -> None:
+        """Record the data directories; nothing is loaded yet.
+
+        Args:
+            raw_dir: Directory holding the source files to index.
+            processed_dir: Directory where the index is saved.
+        """
         self.raw_path = Path(raw_dir)
         self.processed_path = Path(processed_dir)
         self.indexer: None | Indexer = None
@@ -41,6 +61,17 @@ class RAGMachine:
         self.MAX_CHUNK_SIZE: int = 2000
 
     def _check_k(self, k: int) -> None:
+        """Validate the number of sources to retrieve.
+
+        Call after the corpus is loaded, since the bound depends on it.
+
+        Args:
+            k: Requested number of sources.
+
+        Raises:
+            RAGError: If k is not a positive int (bools are rejected)
+                or is not smaller than the number of chunks.
+        """
         if not isinstance(k, int) or isinstance(k, bool):
             raise RAGError("Parameter k has to be a positive integer.")
         if k <= 0:
@@ -52,6 +83,17 @@ class RAGMachine:
             )
 
     def _ensure_chunks(self) -> list[Chunk]:
+        """Return the corpus, loading it from chunks.jsonl if needed.
+
+        Also builds chunk_by_source when loading from disk.
+
+        Returns:
+            The chunk corpus.
+
+        Raises:
+            RAGError: If no index has been built yet, or the chunks file
+                is corrupted.
+        """
         if self.chunked_corpus:
             return self.chunked_corpus
         chunks_file = self.processed_path / "chunks.jsonl"
@@ -79,6 +121,18 @@ class RAGMachine:
         return self.chunked_corpus
 
     def _ensure_index(self, mode: Mode) -> Indexer:
+        """Return the index, loading it from disk if needed.
+
+        Args:
+            mode: Retrieval mode; decides whether embeddings are loaded.
+                Only used on the first call, as the result is cached.
+
+        Returns:
+            The loaded index.
+
+        Raises:
+            RAGError: If the chunks or index files are missing or stale.
+        """
         if self.indexer:
             return self.indexer
         chunks = self._ensure_chunks()
@@ -91,6 +145,15 @@ class RAGMachine:
         return self.indexer
 
     def _chunk(self, max_chunk_size: int, path: Path) -> None:
+        """Chunk every supported file under path, recursively.
+
+        Files are processed in sorted order so chunk IDs are the same on
+        every run.
+
+        Args:
+            max_chunk_size: Upper bound on a chunk's length.
+            path: Root directory to search.
+        """
         files = sorted(
             p
             for p in path.rglob("*")
@@ -100,11 +163,32 @@ class RAGMachine:
             self._ingest_and_chunk(max_chunk_size, p)
 
     def _ingest_and_chunk(self, max_chunk_size: int, path: Path) -> None:
+        """Chunk one file and append its chunks to the corpus.
+
+        Args:
+            max_chunk_size: Upper bound on a chunk's length.
+            path: The file to chunk.
+        """
         chunker = Chunker(path=path, max_chunk_size=max_chunk_size)
         chunker.run()
         self.chunked_corpus.extend(chunker.chunks)
 
     def index(self, max_chunk_size: int, mode: Mode = "bm25") -> int:
+        """Chunk the raw directory, build the index and save it.
+
+        Args:
+            max_chunk_size: Upper bound on a chunk's length, between 1 and
+                MAX_CHUNK_SIZE.
+            mode: bm25, semantic or hybrid; the embedding
+                modes also compute embeddings.
+
+        Returns:
+            The number of chunks indexed.
+
+        Raises:
+            RAGError: If max_chunk_size is out of range or no chunks
+                were produced.
+        """
         start = time.perf_counter()
         if (
             not isinstance(max_chunk_size, int)
@@ -135,6 +219,14 @@ class RAGMachine:
 
     @staticmethod
     def _get_minimal_source(chunk: Chunk) -> MinimalSource:
+        """Strip a chunk down to its file and range.
+
+        Args:
+            chunk: The chunk.
+
+        Returns:
+            The chunk object stripped into a MinimalSource.
+        """
         return MinimalSource(
             file_path=chunk.file_path,
             first_character_index=chunk.first_character_index,
@@ -142,14 +234,41 @@ class RAGMachine:
         )
 
     def _base_search(self, query: str, k: int, mode: Mode) -> list[int]:
-        if mode != 'semantic' and not tokenize(query):
-            raise EmptyQueryError(f"Query '{query}' has no searchable terms"
-                                  " after stopword removal.")
+        """Return the top k chunk indices for a query.
+
+        Args:
+            query: The question text.
+            k: Number of results.
+            mode: bm25, semantic or hybrid.
+
+        Returns:
+            Chunk indices, best match first.
+
+        Raises:
+            EmptyQueryError: If the mode uses BM25 and the query has no
+                tokens left after stopword removal.
+        """
+        if mode != "semantic" and not tokenize(query):
+            raise EmptyQueryError(
+                f"Query '{query}' has no searchable terms"
+                " after stopword removal."
+            )
         return self._ensure_index(mode).get_ktop_idx(query, k, mode)
 
     def _search_with_chunks(
         self, query: str, k: int, mode: Mode
     ) -> tuple[list[Chunk], MinimalSearchResults]:
+        """Search, returning both the full chunks and the search result.
+
+        Args:
+            query: The question text.
+            k: Number of results.
+            mode: bm25, semantic or hybrid.
+
+        Returns:
+            The retrieved chunks, and the matching search result with a
+            new random question ID.
+        """
         sources_idx = self._base_search(query, k, mode)
         chunks = [self.chunked_corpus[i] for i in sources_idx]
         result = MinimalSearchResults(
@@ -162,6 +281,23 @@ class RAGMachine:
     def search(
         self, query: str, k: int, mode: Mode = "bm25"
     ) -> MinimalSearchResults:
+        """Retrieve the top k sources for one question.
+
+        Each result is also written to the debug log.
+
+        Args:
+            query: The question text.
+            k: Number of sources to retrieve.
+            mode: bm25, semantic or hybrid.
+
+        Returns:
+            The search result, with a new random question ID,
+            a MinimalSearchResults instance.
+
+        Raises:
+            RAGError: If there is no index, k is invalid, or the query
+                has no searchable terms.
+        """
         self._ensure_chunks()
         self._check_k(k)
         sources_idx = self._base_search(query, k, mode)
@@ -191,6 +327,27 @@ class RAGMachine:
         save_directory: str,
         mode: Mode = "bm25",
     ) -> StudentSearchResults:
+        """Retrieve sources for every question in a dataset and save them.
+
+        Question IDs from the dataset are kept. A question with no
+        searchable terms is logged and saved with no sources rather than
+        stopping the run. The output file has the dataset's file name.
+
+        Args:
+            dataset_path: JSON file matching RagDataset.
+            k: Number of sources per question.
+            save_directory: Directory to write the results into; created
+                if needed.
+            mode: bm25, semantic or hybrid.
+
+        Returns:
+            The search results for the whole dataset, a StudentSearchResults
+            instance.
+
+        Raises:
+            RAGError: If there is no index, k is invalid, the dataset
+                cannot be loaded, or the results cannot be written.
+        """
         self._ensure_chunks()
         self._check_k(k)
         rag_dataset = load_model(dataset_path, RagDataset)
@@ -201,9 +358,11 @@ class RAGMachine:
             try:
                 sources_idx = self._base_search(question.question, k, mode)
             except EmptyQueryError:
-                log.warning("No searchable terms in "
-                            f"question {question.question_id}"
-                            ", saving it with no retrieved sources.")
+                log.warning(
+                    "No searchable terms in "
+                    f"question {question.question_id}"
+                    ", saving it with no retrieved sources."
+                )
                 sources_idx = []
             search_results.append(
                 MinimalSearchResults(
@@ -240,11 +399,38 @@ class RAGMachine:
     def _generate_answer(
         self, search_results: MinimalSearchResults, chunks: list[Chunk]
     ) -> MinimalAnswer:
+        """Generate an answer from retrieved chunks.
+
+        The language model is loaded on the first call and reused.
+
+        Args:
+            search_results: The question and its retrieved sources.
+            chunks: The chunks for those sources, in the same order.
+
+        Returns:
+            The search result with the generated answer added,
+            a MinimalAnswer instance.
+        """
         if self.model is None:
             self.model = AnswerGenerator()
         return self.model.run(search_results, chunks)
 
     def answer(self, query: str, k: int, mode: Mode = "bm25") -> MinimalAnswer:
+        """Retrieve context for one question and generate an answer.
+
+        Args:
+            query: The question text.
+            k: Number of sources to use as context.
+            mode: bm25, semantic or hybrid.
+
+        Returns:
+            The retrieved sources and the generated answer,
+            a MinimalAnswer instance.
+
+        Raises:
+            RAGError: If there is no index, k is invalid, or the query
+                has no searchable terms.
+        """
         self._ensure_chunks()
         self._check_k(k)
         chunks, search_results = self._search_with_chunks(query, k, mode)
@@ -253,7 +439,21 @@ class RAGMachine:
     def _get_chunks_from_sources(
         self, sources: list[MinimalSource]
     ) -> list[Chunk]:
+        """Look up the chunks that saved sources refer to.
+
+        Args:
+            sources: Sources from a saved search result.
+
+        Returns:
+            The matching chunks, in the same order.
+
+        Raises:
+            RAGError: If a source does not match any chunk, which means
+                the index was rebuilt since the search was run.
+        """
+
         def _key(src: MinimalSource) -> SourceKey:
+            """Build the lookup key for a source."""
             return SourceKey(
                 src.file_path,
                 src.first_character_index,
@@ -272,6 +472,20 @@ class RAGMachine:
     def _answer_from_search_results(
         self, query: str, search_results: MinimalSearchResults
     ) -> MinimalAnswer:
+        """Generate an answer from a saved search result.
+
+        Args:
+            query: The question text (the question in search_results
+                is what is actually used).
+            search_results: A saved search result for one question.
+
+        Returns:
+            The search result with the generated answer added,
+            a MinimalAnswer instance.
+
+        Raises:
+            RAGError: If the saved sources do not match the current index.
+        """
         chunks = self._get_chunks_from_sources(
             search_results.retrieved_sources
         )
@@ -280,6 +494,25 @@ class RAGMachine:
     def answer_dataset(
         self, student_search_results_path: str, save_directory: str
     ) -> StudentSearchResultsAndAnswer:
+        """Generate answers for every question in saved search results.
+
+        No new retrieval is done; the saved sources are used as context.
+        The output file has the input file's name.
+
+        Args:
+            student_search_results_path: JSON file written by
+                search_dataset.
+            save_directory: Directory to write the answers into; created
+                if needed.
+
+        Returns:
+            The search results with an answer for each question,
+            a StudentSearchResultsAndAnswer instance.
+
+        Raises:
+            RAGError: If the input cannot be loaded, its sources do not
+                match the current index, or the output cannot be written.
+        """
         list_of_answers = []
         student_search_results = load_model(
             student_search_results_path, StudentSearchResults
@@ -312,4 +545,17 @@ class RAGMachine:
     def evaluate(
         self, student_search_results_path: str, dataset_path: str
     ) -> Evaluation:
+        """Compute recall@k for saved search results.
+
+        Args:
+            student_search_results_path: JSON file written by
+                search_dataset.
+            dataset_path: JSON file with the reference sources.
+
+        Returns:
+            The evaluation metrics.
+
+        Raises:
+            ImporterError: If either file cannot be loaded.
+        """
         return run_evaluation(student_search_results_path, dataset_path)

@@ -5,6 +5,20 @@
 
 
 def rrf(bm25_ranks: list[int], semantic_ranks: list[int]) -> list[int]:
+    """Fuse two rankings of chunk indices with reciprocal rank fusion.
+
+    Uses the standard smoothing constant of 60. A chunk found by only one
+    retriever still gets that retriever's contribution.
+
+    Args:
+        bm25_ranks: Chunk indices ordered by BM25 score, best first.
+        semantic_ranks: Chunk indices ordered by embedding similarity,
+            best first.
+
+    Returns:
+        Every chunk index from either list, ordered by fused score, best
+        first.
+    """
     rrf_k = 60
     rrf_scores: dict[int, float] = {}
 
