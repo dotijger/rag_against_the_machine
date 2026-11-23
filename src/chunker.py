@@ -82,7 +82,8 @@ class Chunker:
     def run(self) -> None:
         """Read the file and chunk it with the strategy for its extension.
 
-        Unsupported extensions are logged and skipped; empty files produce
+        Unsupported extensions, as well as files
+        that are not readable, are logged and skipped; empty files produce
         no chunks.
 
         Raises:

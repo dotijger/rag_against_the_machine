@@ -59,24 +59,24 @@ class Indexer:
                 device="cpu",
             )
         if not loaded:
+            self.bm25s_retriever = bm25s.BM25()
+            if mode == "bm25":
+                (output_path / "embeddings.npy").unlink(missing_ok=True)
+        else:
             try:
-                self.bm25s_retriever = bm25s.BM25()
+                self.bm25s_retriever = bm25s.BM25.load(output_path / "bm25s")
             except (OSError, ValueError) as e:
                 raise IndexerError(
                         "Could not load BM25 index from "
                         f"{output_path / 'bm25s'}"
                         f"re-run index: {e}"
-                        )
-            if mode == "bm25":
-                (output_path / "embeddings.npy").unlink(missing_ok=True)
-        else:
-            self.bm25s_retriever = bm25s.BM25.load(output_path / "bm25s")
+                        ) from e
             if mode == "semantic" or mode == "hybrid":
                 try:
                     self.minilm_embeddings = np.load(
                         output_path / "embeddings.npy"
                     )
-                except OSError as e:
+                except (OSError, ValueError) as e:
                     raise IndexerError(f"{e}") from e
                 if self.minilm_embeddings.shape[0] != len(corpus):
                     raise IndexerError(
@@ -171,9 +171,11 @@ class Indexer:
     def get_ktop_idx(self, query: str, k: int, mode: Mode) -> list[int]:
         """Return the top k chunk indices for a query.
 
-        In hybrid mode each retriever fetches a deeper list (at least
-        60, capped at the corpus size) before fusion, so a chunk ranked
-        moderately by both can still reach the final top k.
+        In hybrid mode each retriever fetches a deeper list before
+        fusion, so a chunk ranked moderately by both can still reach the
+        final top k. The depth is at least 60, capped at one less than
+        the corpus size, because the semantic retriever's argpartition
+        needs k < n and would crash on a small corpus otherwise.
 
         Args:
             query: The question text.
