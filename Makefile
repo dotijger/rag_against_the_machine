@@ -1,3 +1,4 @@
+.PHONY = all install run debug clean lint lint-strict
 src_dir = src
 mypy_flags = --warn-return-any \
 			 --warn-unused-ignores \
