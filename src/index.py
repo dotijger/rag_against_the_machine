@@ -59,7 +59,14 @@ class Indexer:
                 device="cpu",
             )
         if not loaded:
-            self.bm25s_retriever = bm25s.BM25()
+            try:
+                self.bm25s_retriever = bm25s.BM25()
+            except (OSError, ValueError) as e:
+                raise IndexerError(
+                        "Could not load BM25 index from "
+                        f"{output_path / 'bm25s'}"
+                        f"re-run index: {e}"
+                        )
             if mode == "bm25":
                 (output_path / "embeddings.npy").unlink(missing_ok=True)
         else:
@@ -184,7 +191,7 @@ class Indexer:
         if mode == "semantic":
             return self._get_fetchk_idx(k, query, "semantic")
         if mode == "hybrid":
-            fetch_k = min(max(60, k), len(self.corpus))
+            fetch_k = min(max(60, k), len(self.corpus) - 1)
             bm25_ranks = self._get_fetchk_idx(fetch_k, query, "bm25")
             semantic_ranks = self._get_fetchk_idx(fetch_k, query, "semantic")
             return rrf(bm25_ranks, semantic_ranks)[:k]

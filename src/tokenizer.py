@@ -6,12 +6,16 @@ import Stemmer
 def tokenize(text: str) -> list[str]:
     """Turn text into stemmed, lowercase BM25 terms.
 
-    Words are runs of letters, digits and underscores. Identifiers are
-    split on camelCase boundaries and underscores, and the whole
-    identifier is kept too, so KVCacheManager and kv_cache match
-    both their parts and their exact name. Single characters and English
-    stopwords are dropped, then each term is stemmed with the Snowball
-    English stemmer.
+    Words are runs of letters, digits and underscores. Each word is split
+    on underscores and before a capital that follows a lowercase letter
+    or digit and starts a lowercase run. If that gives more than one
+    part, the whole word is kept as well, so kv_cache gives kv, cache
+    and kv_cache, and CacheManager gives cache, manager and
+    cachemanager. A run of capitals stays attached to the next part:
+    KVCacheManager gives kvcache, manager and kvcachemanager, and
+    HTTPServer is not split at all. Single characters and English
+    stopwords are then dropped, and each term is stemmed with the
+    Snowball English stemmer.
 
     Args:
         text: The text to tokenize; a chunk or a query.

@@ -82,6 +82,13 @@ class RAGMachine:
                 " the amount of chunks in the source corpus."
             )
 
+    def _check_mode(self, mode: str) -> None:
+        """Checks that the mode is one of the supported modes."""
+        if mode not in ['hybrid', 'semantic', 'bm25']:
+            raise RAGError(f"{mode} is not supported, "
+                           "use one of the following: "
+                           "bm25, hybrid or semantic")
+
     def _ensure_chunks(self) -> list[Chunk]:
         """Return the corpus, loading it from chunks.jsonl if needed.
 
@@ -189,6 +196,7 @@ class RAGMachine:
             RAGError: If max_chunk_size is out of range or no chunks
                 were produced.
         """
+        self._check_mode(mode)
         start = time.perf_counter()
         if (
             not isinstance(max_chunk_size, int)
@@ -298,6 +306,7 @@ class RAGMachine:
             RAGError: If there is no index, k is invalid, or the query
                 has no searchable terms.
         """
+        self._check_mode(mode)
         self._ensure_chunks()
         self._check_k(k)
         sources_idx = self._base_search(query, k, mode)
@@ -348,6 +357,7 @@ class RAGMachine:
             RAGError: If there is no index, k is invalid, the dataset
                 cannot be loaded, or the results cannot be written.
         """
+        self._check_mode(mode)
         self._ensure_chunks()
         self._check_k(k)
         rag_dataset = load_model(dataset_path, RagDataset)
@@ -431,6 +441,7 @@ class RAGMachine:
             RAGError: If there is no index, k is invalid, or the query
                 has no searchable terms.
         """
+        self._check_mode(mode)
         self._ensure_chunks()
         self._check_k(k)
         chunks, search_results = self._search_with_chunks(query, k, mode)

@@ -91,7 +91,11 @@ class Chunker:
         if self.path.suffix not in self.SUPPORTED:
             log.warning(f"Skipping '{self.path}', file type not supported.")
             return
-        self._read_source()
+        try:
+            self._read_source()
+        except (OSError, UnicodeDecodeError) as e:
+            log.warning(f"Skipping {self.path}, could not read it: {e}.")
+            return
         if len(self.body) == 0:
             return
         if self.path.suffix == ".txt":

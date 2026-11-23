@@ -399,8 +399,10 @@ I used Claude (Anthropic) as a tutor and reviewer throughout the project:
 - **Design discussion:** weighing options (for example `bm25s` vs `rank_bm25`,
   how to structure `Chunk`, whether to add ChromaDB) before deciding myself.
 - **Review:** running flake8 and mypy over the code and pointing out bugs and
-  unmet requirements.
+  unmet requirements before evaluation / hand-in.
 - **Documentation:** drafting this README, which I then checked and edited.
+- **Doc strings:** drafting the doc strings for all classes and methods, which I then
+checked and edited.
 
 All code was written, tested and understood by me; every design choice above is
 one I can explain and defend.
