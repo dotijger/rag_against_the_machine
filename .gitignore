@@ -1,4 +1,5 @@
-
+.venv
+data/
 moulinette-ubuntu
 moulinette-fedora
 vllm-0.10.1/

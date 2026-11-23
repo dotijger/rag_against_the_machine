@@ -144,7 +144,7 @@ class RAGMachine:
     def _base_search(self, query: str, k: int, mode: Mode) -> list[int]:
         if mode != 'semantic' and not tokenize(query):
             raise EmptyQueryError(f"Query '{query}' has no searchable terms"
-                           " after stopword removal.")
+                                  " after stopword removal.")
         return self._ensure_index(mode).get_ktop_idx(query, k, mode)
 
     def _search_with_chunks(
@@ -201,8 +201,9 @@ class RAGMachine:
             try:
                 sources_idx = self._base_search(question.question, k, mode)
             except EmptyQueryError:
-                log.warning(f"No searchable terms in question {question.question_id}"
-                            " saving it with no retrieved sources.")
+                log.warning("No searchable terms in "
+                            f"question {question.question_id}"
+                            ", saving it with no retrieved sources.")
                 sources_idx = []
             search_results.append(
                 MinimalSearchResults(

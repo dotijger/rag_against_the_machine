@@ -5,7 +5,6 @@ from rich.panel import Panel
 from pathlib import Path
 
 from src.rag import RAGMachine
-from src.error import RAGError
 from src.models import Mode, MinimalSource
 from src.log_setup import setup_logging
 
@@ -15,9 +14,10 @@ class CLI:
         self,
         raw_dir: str = "data/raw",
         processed_dir: str = "data/processed",
+        log_file: str = 'data/log'
     ) -> None:
         self.rag = RAGMachine(raw_dir, processed_dir)
-        setup_logging()
+        setup_logging(log_file)
         self.console = Console()
         self.console.print("[bold italic purple]RAG INITIALIZATION...[/]")
 
@@ -71,6 +71,7 @@ class CLI:
         )
 
     def search(self, query: str, k: int, mode: Mode = "bm25") -> None:
+        query = str(query)
         self.console.rule(f"RAG · SEARCH · {mode.upper()}")
         self.console.print(
             Panel(
@@ -84,6 +85,7 @@ class CLI:
         self._print_sources_table(search_results.retrieved_sources)
 
     def answer(self, query: str, k: int, mode: Mode = "bm25") -> None:
+        query = str(query)
         self.console.rule(f"RAG · ANSWER · {mode.upper()}")
         self.console.print(
             Panel(

@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 
-def setup_logging() -> None:
+def setup_logging(file_path: str) -> None:
     logger = logging.getLogger("src")
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
@@ -27,7 +27,7 @@ def setup_logging() -> None:
     console.setLevel(logging.INFO)
     logger.addHandler(console)
 
-    log_file = Path("data/log")
+    log_file = Path(file_path)
     log_file.parent.mkdir(parents=True, exist_ok=True)
     file = logging.FileHandler(log_file, encoding="utf-8")
     file.setLevel(logging.DEBUG)

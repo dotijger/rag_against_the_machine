@@ -1,6 +1,7 @@
 class RAGError(Exception):
     pass
 
+
 class EmptyQueryError(RAGError):
     pass
 
